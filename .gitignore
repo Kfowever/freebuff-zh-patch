@@ -1,0 +1,11 @@
+# Release artifacts are attached to GitHub Releases, not committed.
+*.zip
+
+# Never publish application binaries, archives, local backups, or secrets.
+*.asar
+*.exe
+*.log
+.env
+.env.*
+backups/
+work/
