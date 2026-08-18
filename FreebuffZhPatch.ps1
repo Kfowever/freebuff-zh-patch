@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [ValidateSet('Install', 'Restore', 'Status')]
     [string]$Action = 'Install',
@@ -13,8 +13,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$PatchVersion = '0.3.0'
-$TestedAppVersion = '0.0.63.0'
+$PatchVersion = '0.4.0'
+$TestedAppVersion = '0.0.64.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
@@ -25,7 +25,15 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 function Get-Sha256 {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $null }
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    $stream = [IO.File]::OpenRead($Path)
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $hash = $algorithm.ComputeHash($stream)
+        return (($hash | ForEach-Object { $_.ToString('x2') }) -join '')
+    } finally {
+        $algorithm.Dispose()
+        $stream.Dispose()
+    }
 }
 
 function Get-AppVersion {
@@ -64,13 +72,91 @@ function Assert-FreebuffStopped {
     }
 }
 
+function Confirm-IncompatibleInstall {
+    param(
+        [Parameter(Mandatory = $true)][string]$DetectedVersion,
+        [Parameter(Mandatory = $true)][string]$SupportedVersion
+    )
+
+    Write-Warning "Freebuff $DetectedVersion is not the version tested with this patch ($SupportedVersion)."
+    Write-Warning '强制安装可能造成兼容性问题、中文缺失/错位/乱码、界面行为异常，甚至启动失败。'
+    Write-Warning '该确认只会跳过版本号限制，不会跳过文件、备份、哈希或回滚安全检查。'
+
+    if ((-not [Environment]::UserInteractive) -or [Console]::IsInputRedirected) {
+        Write-Warning '当前环境无法进行交互确认。未修改任何文件。'
+        exit 3
+    }
+
+    try {
+        $answer = Read-Host '如果理解风险并仍要安装，请仅输入 y'
+    } catch {
+        Write-Warning '无法读取交互确认。未修改任何文件。'
+        exit 3
+    }
+    if (($null -eq $answer) -or ($answer.Trim() -notmatch '^[yY]$')) {
+        Write-Warning '已取消强制安装。未修改任何文件。'
+        exit 3
+    }
+}
+
+function Remove-NewInstallArtifacts {
+    param(
+        [string]$BackupDir,
+        [string]$BackupRoot,
+        [string[]]$BackupFiles,
+        [string]$HistoryPath,
+        [string]$HistoryRoot
+    )
+
+    foreach ($file in @($BackupFiles)) {
+        if (-not [string]::IsNullOrWhiteSpace($file)) {
+            try {
+                if (Test-Path -LiteralPath $file -PathType Leaf) {
+                    Remove-Item -LiteralPath $file -Force -ErrorAction Stop
+                }
+            } catch {}
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($BackupDir) -and -not [string]::IsNullOrWhiteSpace($BackupRoot)) {
+        try {
+            $resolvedBackupDir = [IO.Path]::GetFullPath($BackupDir)
+            $resolvedBackupRoot = [IO.Path]::GetFullPath($BackupRoot)
+            $backupParent = [IO.Path]::GetFullPath((Split-Path -Parent $resolvedBackupDir))
+            if ($backupParent.Equals($resolvedBackupRoot, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedBackupDir -PathType Container)) {
+                Remove-Item -LiteralPath $resolvedBackupDir -Force -ErrorAction Stop
+            }
+        } catch {}
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($HistoryPath) -and -not [string]::IsNullOrWhiteSpace($HistoryRoot)) {
+        try {
+            $resolvedHistoryPath = [IO.Path]::GetFullPath($HistoryPath)
+            $resolvedHistoryRoot = [IO.Path]::GetFullPath($HistoryRoot)
+            $historyParent = [IO.Path]::GetFullPath((Split-Path -Parent $resolvedHistoryPath))
+            if ($historyParent.Equals($resolvedHistoryRoot, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedHistoryPath -PathType Leaf)) {
+                Remove-Item -LiteralPath $resolvedHistoryPath -Force -ErrorAction Stop
+            }
+        } catch {}
+    }
+}
+
 function Write-JsonFile {
     param(
         [Parameter(Mandatory = $true)]$Value,
         [Parameter(Mandatory = $true)][string]$Path
     )
     $json = $Value | ConvertTo-Json -Depth 8
-    [IO.File]::WriteAllText($Path, $json, $Utf8NoBom)
+    $parent = Split-Path -Parent $Path
+    $temp = Join-Path $parent ('.freebuff-zh-manifest-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        [IO.File]::WriteAllText($temp, $json, $Utf8NoBom)
+        Move-Item -LiteralPath $temp -Destination $Path -Force
+    } finally {
+        if (Test-Path -LiteralPath $temp -PathType Leaf) {
+            Remove-Item -LiteralPath $temp -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function Get-PropertyValue {
@@ -179,6 +265,10 @@ if ([string]::IsNullOrWhiteSpace($StateDir)) {
 }
 $ManifestPath = Join-Path $StateRoot 'manifest.json'
 
+if (Test-Path -LiteralPath $ManifestPath -PathType Container) {
+    throw "The patch manifest path is a directory, not a file: $ManifestPath"
+}
+
 if (-not (Test-Path -LiteralPath $ExePath -PathType Leaf)) {
     throw "Freebuff.exe was not found: $ExePath"
 }
@@ -190,6 +280,9 @@ if (-not (Test-Path -LiteralPath $AppAsarPath -PathType Leaf)) {
 }
 
 $CurrentVersion = Get-AppVersion -ExePath $ExePath
+if ([string]::IsNullOrWhiteSpace([string]$CurrentVersion)) {
+    throw 'Freebuff.exe does not expose a readable ProductVersion. Installation and restore are blocked because compatibility cannot be determined.'
+}
 $CurrentIndexText = [IO.File]::ReadAllText($IndexPath)
 $HasMarker = $CurrentIndexText.Contains($PatchMarkerStart)
 $MainAsset = Get-MainAssetInfo -IndexText $CurrentIndexText -UiDir $UiDir
@@ -212,7 +305,12 @@ $ManifestInstalled = [bool](Get-PropertyValue -InputObject $manifest -Name 'Inst
 $ManifestAppVersion = Get-PropertyValue -InputObject $manifest -Name 'AppVersion'
 $ManifestPatchVersion = Get-PropertyValue -InputObject $manifest -Name 'PatchVersion'
 $ManifestStartupPatchEnabled = [bool](Get-PropertyValue -InputObject $manifest -Name 'StartupPatchEnabled')
+$ManifestMainAssetName = Get-PropertyValue -InputObject $manifest -Name 'MainAssetName'
+$ManifestMainAssetHash = Get-PropertyValue -InputObject $manifest -Name 'MainAssetHash'
+$ManifestPatchedIndexHash = Get-PropertyValue -InputObject $manifest -Name 'PatchedIndexHash'
+$ManifestPatchedAssetHash = Get-PropertyValue -InputObject $manifest -Name 'PatchedAssetHash'
 $ManifestPatchedAppAsarHash = Get-PropertyValue -InputObject $manifest -Name 'PatchedAppAsarHash'
+$CurrentIndexHash = Get-Sha256 -Path $IndexPath
 $CurrentAppAsarHash = Get-Sha256 -Path $AppAsarPath
 $StartupPatchInfo = Get-StartupPatchInfo -Path $AppAsarPath
 $VersionCompatible = $CurrentVersion -eq $TestedAppVersion
@@ -226,6 +324,10 @@ if ($HasMarker -and $PatchAssetPresent) {
         ($ManifestPatchVersion -eq $PatchVersion) -and
         ($InjectedPatchVersion -eq $PatchVersion) -and
         ($InstalledPatchHash -eq $SourcePatchHash) -and
+        ($InstalledPatchHash -eq $ManifestPatchedAssetHash) -and
+        ($CurrentIndexHash -eq $ManifestPatchedIndexHash) -and
+        ($MainAsset.Name -eq $ManifestMainAssetName) -and
+        ($MainAsset.Hash -eq $ManifestMainAssetHash) -and
         $ManifestStartupPatchEnabled -and
         ($StartupPatchInfo.State -eq 'Patched') -and
         ($CurrentAppAsarHash -eq $ManifestPatchedAppAsarHash)
@@ -237,7 +339,16 @@ if ($HasMarker -and $PatchAssetPresent) {
 } elseif ($HasMarker -or $PatchAssetPresent) {
     $PatchState = 'PartialInstallation'
 } elseif ($ManifestInstalled) {
-    $PatchState = 'StaleManifest'
+    if (
+        ($ManifestAppVersion -eq '0.0.63.0') -and
+        ($ManifestPatchVersion -eq '0.3.0') -and
+        ($CurrentVersion -eq $TestedAppVersion) -and
+        ($StartupPatchInfo.State -eq 'Unpatched')
+    ) {
+        $PatchState = 'UpdatedAppNeedsInstall'
+    } else {
+        $PatchState = 'StaleManifest'
+    }
 } else {
     $PatchState = 'NotInstalled'
 }
@@ -252,12 +363,15 @@ if ($Action -eq 'Status') {
         PatchState = $PatchState
         MainAsset = $MainAsset.Name
         MainAssetHash = $MainAsset.Hash
+        CurrentIndexHash = $CurrentIndexHash
+        ManifestPatchedIndexHash = $ManifestPatchedIndexHash
         PatchInstalled = ($HasMarker -and $PatchAssetPresent -and $ManifestInstalled)
         PatchMarkerPresent = $HasMarker
         PatchAssetPresent = $PatchAssetPresent
         InjectedPatchVersion = $InjectedPatchVersion
         InstalledPatchHash = $InstalledPatchHash
         SourcePatchHash = $SourcePatchHash
+        ManifestPatchedAssetHash = $ManifestPatchedAssetHash
         StartupPatchState = $StartupPatchInfo.State
         StartupOriginalCount = $StartupPatchInfo.OriginalCount
         StartupLocalizedCount = $StartupPatchInfo.LocalizedCount
@@ -278,16 +392,12 @@ if (($Action -eq 'Install') -and ($PatchState -eq 'InstalledCurrent')) {
     exit 0
 }
 
-if (($Action -eq 'Install') -and -not $VersionCompatible -and -not $Force) {
-    throw "Freebuff version $CurrentVersion is not supported by this patch. Tested version: $TestedAppVersion. Installation stopped. Use -Force only after verifying compatibility."
+if (($Action -eq 'Install') -and ($PatchState -eq 'StaleManifest')) {
+    throw 'The manifest says the patch is installed, but the current files do not form a recognized clean post-update state. Installation stopped to preserve the backup chain.'
 }
 
-if (($Action -eq 'Install') -and ($PatchState -eq 'StaleManifest') -and -not $Force) {
-    throw 'The manifest says the patch is installed, but the marker and asset are missing. Installation stopped to preserve the previous backup chain. Inspect the files or use -Force.'
-}
-
-if (($Action -eq 'Install') -and (($PatchState -eq 'PartialInstallation') -or ($PatchState -eq 'UnmanagedInstallation')) -and -not $Force) {
-    throw "Detected an incomplete or unmanaged patch state: $PatchState. Installation stopped to protect existing files. Inspect the installation or use -Force."
+if (($Action -eq 'Install') -and (($PatchState -eq 'PartialInstallation') -or ($PatchState -eq 'UnmanagedInstallation') -or ($PatchState -eq 'InstalledForOtherVersion'))) {
+    throw "Detected an incomplete, unmanaged, or cross-version patch state: $PatchState. Installation stopped to protect existing files and backups."
 }
 
 Assert-FreebuffStopped
@@ -303,15 +413,18 @@ if ($Action -eq 'Restore') {
     if (-not $manifest.Installed) {
         throw 'Patch files are present, but the manifest says the patch is not installed. Restore stopped to avoid deleting unmanaged files.'
     }
-    if (($CurrentVersion -ne $manifest.AppVersion) -and -not $Force) {
-        throw "Freebuff changed from version $($manifest.AppVersion) to $CurrentVersion. Restore stopped to avoid overwriting a newer app file. Use -Force only after checking the files."
+    if ($CurrentVersion -ne $manifest.AppVersion) {
+        throw "Freebuff changed from version $($manifest.AppVersion) to $CurrentVersion. Restore stopped to avoid overwriting a newer app file."
     }
     $currentIndexHash = Get-Sha256 -Path $IndexPath
-    if (($currentIndexHash -ne $manifest.PatchedIndexHash) -and -not $Force) {
-        throw 'index.html changed after the patch was installed. Restore stopped to protect the current file; use -Force only after checking it.'
+    if ($currentIndexHash -ne $manifest.PatchedIndexHash) {
+        throw 'index.html changed after the patch was installed. Restore stopped to protect the current file.'
     }
     if (-not (Test-Path -LiteralPath $manifest.BackupIndexPath -PathType Leaf)) {
         throw "The original index.html backup is missing: $($manifest.BackupIndexPath)"
+    }
+    if ((Get-Sha256 -Path $manifest.BackupIndexPath) -ne $manifest.OriginalIndexHash) {
+        throw 'The index.html backup hash does not match the installation manifest. Restore stopped.'
     }
 
     $restoreStartupPatch = [bool](Get-PropertyValue -InputObject $manifest -Name 'StartupPatchEnabled')
@@ -319,19 +432,36 @@ if ($Action -eq 'Restore') {
     $originalAppAsarHash = Get-PropertyValue -InputObject $manifest -Name 'OriginalAppAsarHash'
     $patchedAppAsarHash = Get-PropertyValue -InputObject $manifest -Name 'PatchedAppAsarHash'
     if ($restoreStartupPatch) {
-        if (($CurrentAppAsarHash -ne $patchedAppAsarHash) -and -not $Force) {
-            throw 'app.asar changed after the startup translation was installed. Restore stopped to protect the current file; use -Force only after checking it.'
+        if ($CurrentAppAsarHash -ne $patchedAppAsarHash) {
+            throw 'app.asar changed after the startup translation was installed. Restore stopped to protect the current file.'
         }
         if ([string]::IsNullOrWhiteSpace([string]$backupAppAsarPath) -or -not (Test-Path -LiteralPath $backupAppAsarPath -PathType Leaf)) {
             throw "The original app.asar backup is missing: $backupAppAsarPath"
         }
-        if (((Get-Sha256 -Path $backupAppAsarPath) -ne $originalAppAsarHash) -and -not $Force) {
+        if ((Get-Sha256 -Path $backupAppAsarPath) -ne $originalAppAsarHash) {
             throw 'The app.asar backup hash does not match the installation manifest. Restore stopped.'
         }
     }
 
+    $restoreOriginalAsset = [bool](Get-PropertyValue -InputObject $manifest -Name 'OriginalPatchAssetExisted')
+    $restoreAssetBackup = Get-PropertyValue -InputObject $manifest -Name 'BackupPatchAssetPath'
+    if ($restoreOriginalAsset -and ([string]::IsNullOrWhiteSpace([string]$restoreAssetBackup) -or -not (Test-Path -LiteralPath $restoreAssetBackup -PathType Leaf))) {
+        throw "The original same-name asset backup is missing: $restoreAssetBackup"
+    }
+
     $restoreTemp = Join-Path $UiDir ('.freebuff-zh-restore-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $restoreAsarTemp = Join-Path (Split-Path -Parent $AppAsarPath) ('.freebuff-zh-asar-restore-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    $restoreRollbackIndex = Join-Path $UiDir ('.freebuff-zh-index-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    $restoreRollbackAsar = Join-Path (Split-Path -Parent $AppAsarPath) ('.freebuff-zh-asar-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    $restoreRollbackAsset = Join-Path $AssetsDir ('.freebuff-zh-asset-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    $restorePatchedAssetExisted = Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf
+    Copy-Item -LiteralPath $IndexPath -Destination $restoreRollbackIndex -Force
+    if ($restoreStartupPatch) {
+        Copy-Item -LiteralPath $AppAsarPath -Destination $restoreRollbackAsar -Force
+    }
+    if ($restorePatchedAssetExisted) {
+        Copy-Item -LiteralPath $InstalledPatchAsset -Destination $restoreRollbackAsset -Force
+    }
     try {
         Copy-Item -LiteralPath $manifest.BackupIndexPath -Destination $restoreTemp -Force
         Move-Item -LiteralPath $restoreTemp -Destination $IndexPath -Force
@@ -339,11 +469,8 @@ if ($Action -eq 'Restore') {
             Copy-Item -LiteralPath $backupAppAsarPath -Destination $restoreAsarTemp -Force
             Move-Item -LiteralPath $restoreAsarTemp -Destination $AppAsarPath -Force
         }
-        if ($manifest.OriginalPatchAssetExisted) {
-            if (-not (Test-Path -LiteralPath $manifest.BackupPatchAssetPath -PathType Leaf)) {
-                throw "The original same-name asset backup is missing: $($manifest.BackupPatchAssetPath)"
-            }
-            Copy-Item -LiteralPath $manifest.BackupPatchAssetPath -Destination $InstalledPatchAsset -Force
+        if ($restoreOriginalAsset) {
+            Copy-Item -LiteralPath $restoreAssetBackup -Destination $InstalledPatchAsset -Force
         } elseif (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf) {
             Remove-Item -LiteralPath $InstalledPatchAsset -Force
         }
@@ -356,12 +483,25 @@ if ($Action -eq 'Restore') {
         }
         Write-JsonFile -Value $manifest -Path $ManifestPath
         Write-Host "The Freebuff Chinese patch was restored. The original backup remains at: $($manifest.BackupDir)"
-    } finally {
-        if (Test-Path -LiteralPath $restoreTemp -PathType Leaf) {
-            Remove-Item -LiteralPath $restoreTemp -Force -ErrorAction SilentlyContinue
+    } catch {
+        $failureMessage = $_.Exception.Message
+        try { Copy-Item -LiteralPath $restoreRollbackIndex -Destination $IndexPath -Force -ErrorAction Stop } catch {}
+        if ($restoreStartupPatch -and (Test-Path -LiteralPath $restoreRollbackAsar -PathType Leaf)) {
+            try { Copy-Item -LiteralPath $restoreRollbackAsar -Destination $AppAsarPath -Force -ErrorAction Stop } catch {}
         }
-        if (Test-Path -LiteralPath $restoreAsarTemp -PathType Leaf) {
-            Remove-Item -LiteralPath $restoreAsarTemp -Force -ErrorAction SilentlyContinue
+        try {
+            if ($restorePatchedAssetExisted -and (Test-Path -LiteralPath $restoreRollbackAsset -PathType Leaf)) {
+                Copy-Item -LiteralPath $restoreRollbackAsset -Destination $InstalledPatchAsset -Force -ErrorAction Stop
+            } elseif (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf) {
+                Remove-Item -LiteralPath $InstalledPatchAsset -Force -ErrorAction Stop
+            }
+        } catch {}
+        throw "Chinese patch restore failed and the patched files were restored when possible. Reason: $failureMessage"
+    } finally {
+        foreach ($temporaryPath in @($restoreTemp, $restoreAsarTemp, $restoreRollbackIndex, $restoreRollbackAsar, $restoreRollbackAsset)) {
+            if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
+                Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
+            }
         }
     }
     exit 0
@@ -371,19 +511,33 @@ if (-not (Test-Path -LiteralPath $SourcePatchAsset -PathType Leaf)) {
     throw "The Chinese localization asset is missing: $SourcePatchAsset"
 }
 
-if (-not $VersionCompatible) {
-    Write-Warning "Forced installation on Freebuff $CurrentVersion. Tested patch version: $TestedAppVersion. Verify the UI after installation."
+$moduleMatch = $null
+if (-not $HasMarker) {
+    if ($StartupPatchInfo.State -ne 'Unpatched') {
+        throw "A safe startup translation cannot be installed because the app.asar text state is $($StartupPatchInfo.State)."
+    }
+    $moduleMatch = [regex]::Match($CurrentIndexText, '(?m)^\s*<script type="module"')
+    if (-not $moduleMatch.Success) {
+        throw 'Could not locate the Freebuff main module script tag. The installation directory was not modified.'
+    }
 }
 
-New-Item -ItemType Directory -Force -Path $StateRoot | Out-Null
+if (-not $VersionCompatible) {
+    if ($Force) {
+        Write-Host 'The legacy -Force switch was supplied; interactive y/Y confirmation is still required.'
+    }
+    Confirm-IncompatibleInstall -DetectedVersion $CurrentVersion -SupportedVersion $TestedAppVersion
+    Assert-FreebuffStopped
+    Write-Warning "Proceeding with explicitly confirmed installation on Freebuff $CurrentVersion."
+}
 
 if ($HasMarker) {
     if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
         throw 'A localization marker exists, but the patch manifest is missing. Inspect the installation directory or restore from a backup first.'
     }
     $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
-    if (($manifest.AppVersion -ne $CurrentVersion) -and -not $Force) {
-        throw 'The localization marker belongs to another Freebuff version. Check the update state; use -Force only if a refresh is appropriate.'
+    if ($manifest.AppVersion -ne $CurrentVersion) {
+        throw 'The localization marker belongs to another Freebuff version. Refresh stopped to protect the existing backup chain.'
     }
     if ($null -eq $InjectedPatchVersion) {
         throw 'The localization marker exists, but its injected patch version is missing. Installation stopped.'
@@ -405,7 +559,7 @@ if ($HasMarker) {
         if (-not (Test-Path -LiteralPath $backupAppAsarPath -PathType Leaf)) {
             throw "The original app.asar backup is missing: $backupAppAsarPath"
         }
-        if (((Get-Sha256 -Path $backupAppAsarPath) -ne $originalAppAsarHash) -and -not $Force) {
+        if ((Get-Sha256 -Path $backupAppAsarPath) -ne $originalAppAsarHash) {
             throw 'The app.asar backup hash does not match the installation manifest. Refresh stopped.'
         }
     }
@@ -418,10 +572,10 @@ if ($HasMarker) {
     $rollbackIndex = Join-Path $UiDir ('.freebuff-zh-index-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $rollbackAsset = Join-Path $AssetsDir ('.freebuff-zh-asset-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $rollbackAsar = Join-Path (Split-Path -Parent $AppAsarPath) ('.freebuff-zh-asar-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
-    Copy-Item -LiteralPath $IndexPath -Destination $rollbackIndex -Force
-    Copy-Item -LiteralPath $InstalledPatchAsset -Destination $rollbackAsset -Force
-    Copy-Item -LiteralPath $AppAsarPath -Destination $rollbackAsar -Force
     try {
+        Copy-Item -LiteralPath $IndexPath -Destination $rollbackIndex -Force
+        Copy-Item -LiteralPath $InstalledPatchAsset -Destination $rollbackAsset -Force
+        Copy-Item -LiteralPath $AppAsarPath -Destination $rollbackAsar -Force
         $versionRegex = [regex]'data-freebuff-zh-patch="[^"]+"'
         $refreshedIndexText = $versionRegex.Replace($CurrentIndexText, "data-freebuff-zh-patch=`"$PatchVersion`"", 1)
         Copy-Item -LiteralPath $SourcePatchAsset -Destination $assetTemp -Force
@@ -439,8 +593,11 @@ if ($HasMarker) {
             throw 'The startup translation was not detected after refresh.'
         }
         $manifest.PatchVersion = $PatchVersion
+        $manifest.MainAssetName = $MainAsset.Name
+        $manifest.MainAssetHash = $MainAsset.Hash
         $manifest.PatchedIndexHash = Get-Sha256 -Path $IndexPath
         $manifest.PatchedAssetHash = Get-Sha256 -Path $InstalledPatchAsset
+        $manifest | Add-Member -NotePropertyName 'PatchAssetName' -NotePropertyValue $PatchAssetName -Force
         $manifest | Add-Member -NotePropertyName 'StartupPatchEnabled' -NotePropertyValue $true -Force
         $manifest | Add-Member -NotePropertyName 'BackupAppAsarPath' -NotePropertyValue $backupAppAsarPath -Force
         $manifest | Add-Member -NotePropertyName 'OriginalAppAsarHash' -NotePropertyValue $originalAppAsarHash -Force
@@ -450,10 +607,11 @@ if ($HasMarker) {
         Write-JsonFile -Value $manifest -Path $ManifestPath
         Write-Host "Freebuff Chinese localization refreshed to patch version $PatchVersion."
     } catch {
-        Copy-Item -LiteralPath $rollbackIndex -Destination $IndexPath -Force -ErrorAction SilentlyContinue
-        Copy-Item -LiteralPath $rollbackAsset -Destination $InstalledPatchAsset -Force -ErrorAction SilentlyContinue
-        Copy-Item -LiteralPath $rollbackAsar -Destination $AppAsarPath -Force -ErrorAction SilentlyContinue
-        throw "Chinese patch refresh failed and the previous files were restored when possible. Reason: $($_.Exception.Message)"
+        $failureMessage = $_.Exception.Message
+        try { Copy-Item -LiteralPath $rollbackIndex -Destination $IndexPath -Force -ErrorAction Stop } catch {}
+        try { Copy-Item -LiteralPath $rollbackAsset -Destination $InstalledPatchAsset -Force -ErrorAction Stop } catch {}
+        try { Copy-Item -LiteralPath $rollbackAsar -Destination $AppAsarPath -Force -ErrorAction Stop } catch {}
+        throw "Chinese patch refresh failed and the previous files were restored when possible. Reason: $failureMessage"
     } finally {
         if (Test-Path -LiteralPath $assetTemp -PathType Leaf) {
             Remove-Item -LiteralPath $assetTemp -Force -ErrorAction SilentlyContinue
@@ -470,23 +628,69 @@ if ($HasMarker) {
     exit 0
 }
 
-if ($StartupPatchInfo.State -ne 'Unpatched') {
-    throw "A safe startup translation cannot be installed because the app.asar text state is $($StartupPatchInfo.State)."
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$PreviousManifestPath = $null
+$PreviousBackupDir = $null
+$PreviousAppVersion = $null
+$PreviousPatchVersion = $null
+$historyDir = $null
+
+if ($PatchState -eq 'UpdatedAppNeedsInstall') {
+    $PreviousBackupDir = Get-PropertyValue -InputObject $manifest -Name 'BackupDir'
+    if ([string]::IsNullOrWhiteSpace([string]$PreviousBackupDir) -or -not (Test-Path -LiteralPath $PreviousBackupDir -PathType Container)) {
+        throw "The previous 0.3.0 backup directory is missing, so migration cannot safely preserve its history: $PreviousBackupDir"
+    }
+    $PreviousAppVersion = $ManifestAppVersion
+    $PreviousPatchVersion = $ManifestPatchVersion
+    $historyDir = Join-Path $StateRoot 'history'
+    New-Item -ItemType Directory -Force -Path $historyDir | Out-Null
+    $historyId = [guid]::NewGuid().ToString('N').Substring(0, 8)
+    $historyVersion = ([string]$PreviousAppVersion) -replace '[^0-9A-Za-z._-]', '_'
+    $PreviousManifestPath = Join-Path $historyDir "manifest-$historyVersion-$timestamp-$historyId.json"
+    try {
+        Copy-Item -LiteralPath $ManifestPath -Destination $PreviousManifestPath -ErrorAction Stop
+    } catch {
+        try {
+            if (Test-Path -LiteralPath $PreviousManifestPath -PathType Leaf) {
+                Remove-Item -LiteralPath $PreviousManifestPath -Force -ErrorAction Stop
+            }
+        } catch {}
+        throw
+    }
+} else {
+    New-Item -ItemType Directory -Force -Path $StateRoot | Out-Null
 }
 
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $safeVersion = $CurrentVersion -replace '[^0-9A-Za-z._-]', '_'
-$BackupDir = Join-Path (Join-Path $StateRoot 'backups') "$safeVersion-$timestamp"
-New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+$BackupRoot = Join-Path $StateRoot 'backups'
+$BackupDir = Join-Path $BackupRoot "$safeVersion-$timestamp"
 $BackupIndexPath = Join-Path $BackupDir 'index.html'
 $BackupPatchAssetPath = Join-Path $BackupDir $PatchAssetName
 $BackupAppAsarPath = Join-Path $BackupDir 'app.asar'
 $OriginalPatchAssetExisted = Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf
+$OriginalIndexHash = Get-Sha256 -Path $IndexPath
+$OriginalAppAsarHash = Get-Sha256 -Path $AppAsarPath
 
-Copy-Item -LiteralPath $IndexPath -Destination $BackupIndexPath -Force
-Copy-Item -LiteralPath $AppAsarPath -Destination $BackupAppAsarPath -Force
-if ($OriginalPatchAssetExisted) {
-    Copy-Item -LiteralPath $InstalledPatchAsset -Destination $BackupPatchAssetPath -Force
+try {
+    New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+    Copy-Item -LiteralPath $IndexPath -Destination $BackupIndexPath -Force
+    Copy-Item -LiteralPath $AppAsarPath -Destination $BackupAppAsarPath -Force
+    if ($OriginalPatchAssetExisted) {
+        Copy-Item -LiteralPath $InstalledPatchAsset -Destination $BackupPatchAssetPath -Force
+    }
+    if ((Get-Sha256 -Path $BackupIndexPath) -ne $OriginalIndexHash) {
+        throw 'The index.html backup failed hash verification.'
+    }
+    if ((Get-Sha256 -Path $BackupAppAsarPath) -ne $OriginalAppAsarHash) {
+        throw 'The app.asar backup failed hash verification.'
+    }
+    if ($OriginalPatchAssetExisted -and ((Get-Sha256 -Path $BackupPatchAssetPath) -ne (Get-Sha256 -Path $InstalledPatchAsset))) {
+        throw 'The same-name patch asset backup failed hash verification.'
+    }
+} catch {
+    $failureMessage = $_.Exception.Message
+    Remove-NewInstallArtifacts -BackupDir $BackupDir -BackupRoot $BackupRoot -BackupFiles @($BackupIndexPath, $BackupPatchAssetPath, $BackupAppAsarPath) -HistoryPath $PreviousManifestPath -HistoryRoot $historyDir
+    throw "Backup preparation failed before modifying the app. Reason: $failureMessage"
 }
 
 $injection = @"
@@ -494,11 +698,6 @@ $injection = @"
     <script src="./assets/$PatchAssetName" data-freebuff-zh-patch="$PatchVersion"></script>
     $PatchMarkerEnd
 "@
-
-$moduleMatch = [regex]::Match($CurrentIndexText, '(?m)^\s*<script type="module"')
-if (-not $moduleMatch.Success) {
-    throw 'Could not locate the Freebuff main module script tag. The installation directory was not modified.'
-}
 
 $patchedIndexText = $CurrentIndexText.Insert($moduleMatch.Index, $injection + [Environment]::NewLine)
 $patchedIndexText = [regex]::Replace($patchedIndexText, '<html\s+lang="en">', '<html lang="zh-CN">', 1)
@@ -538,17 +737,22 @@ try {
         TestedAppVersion = $TestedAppVersion
         MainAssetName = $MainAsset.Name
         MainAssetHash = $MainAsset.Hash
+        PatchAssetName = $PatchAssetName
         BackupDir = $BackupDir
         BackupIndexPath = $BackupIndexPath
         BackupPatchAssetPath = if ($OriginalPatchAssetExisted) { $BackupPatchAssetPath } else { $null }
         BackupAppAsarPath = $BackupAppAsarPath
         OriginalPatchAssetExisted = $OriginalPatchAssetExisted
-        OriginalIndexHash = Get-Sha256 -Path $BackupIndexPath
-        OriginalAppAsarHash = Get-Sha256 -Path $BackupAppAsarPath
+        OriginalIndexHash = $OriginalIndexHash
+        OriginalAppAsarHash = $OriginalAppAsarHash
         PatchedIndexHash = Get-Sha256 -Path $IndexPath
         PatchedAssetHash = Get-Sha256 -Path $InstalledPatchAsset
         StartupPatchEnabled = $true
         PatchedAppAsarHash = Get-Sha256 -Path $AppAsarPath
+        PreviousManifestPath = $PreviousManifestPath
+        PreviousBackupDir = $PreviousBackupDir
+        PreviousAppVersion = $PreviousAppVersion
+        PreviousPatchVersion = $PreviousPatchVersion
     }
     Write-JsonFile -Value $manifest -Path $ManifestPath
     Write-Host "Freebuff $CurrentVersion Chinese patch $PatchVersion installed."
@@ -556,14 +760,26 @@ try {
     Write-Host 'Start Freebuff to verify the UI. To restore:'
     Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Action Restore"
 } catch {
-    Copy-Item -LiteralPath $BackupIndexPath -Destination $IndexPath -Force -ErrorAction SilentlyContinue
-    Copy-Item -LiteralPath $BackupAppAsarPath -Destination $AppAsarPath -Force -ErrorAction SilentlyContinue
-    if ($OriginalPatchAssetExisted) {
-        Copy-Item -LiteralPath $BackupPatchAssetPath -Destination $InstalledPatchAsset -Force -ErrorAction SilentlyContinue
-    } elseif (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf) {
-        Remove-Item -LiteralPath $InstalledPatchAsset -Force -ErrorAction SilentlyContinue
-    }
-    throw "Chinese patch installation failed and the original files were restored when possible. Reason: $($_.Exception.Message)"
+    $failureMessage = $_.Exception.Message
+    try {
+        if ((Get-Sha256 -Path $IndexPath) -ne $OriginalIndexHash) {
+            Copy-Item -LiteralPath $BackupIndexPath -Destination $IndexPath -Force -ErrorAction Stop
+        }
+    } catch {}
+    try {
+        if ((Get-Sha256 -Path $AppAsarPath) -ne $OriginalAppAsarHash) {
+            Copy-Item -LiteralPath $BackupAppAsarPath -Destination $AppAsarPath -Force -ErrorAction Stop
+        }
+    } catch {}
+    try {
+        if ($OriginalPatchAssetExisted) {
+            Copy-Item -LiteralPath $BackupPatchAssetPath -Destination $InstalledPatchAsset -Force -ErrorAction Stop
+        } elseif (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf) {
+            Remove-Item -LiteralPath $InstalledPatchAsset -Force -ErrorAction Stop
+        }
+    } catch {}
+    Remove-NewInstallArtifacts -BackupDir $BackupDir -BackupRoot $BackupRoot -BackupFiles @($BackupIndexPath, $BackupPatchAssetPath, $BackupAppAsarPath) -HistoryPath $PreviousManifestPath -HistoryRoot $historyDir
+    throw "Chinese patch installation failed and the original files were restored when possible. Reason: $failureMessage"
 } finally {
     if (Test-Path -LiteralPath $tempIndex -PathType Leaf) {
         Remove-Item -LiteralPath $tempIndex -Force -ErrorAction SilentlyContinue

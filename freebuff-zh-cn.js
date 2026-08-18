@@ -6,7 +6,7 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.3.0'
+  const PATCH_VERSION = '0.4.0'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
@@ -21,7 +21,18 @@
       Stopped: '已停止',
       'Auto stopped': '已自动停止',
       'Merge conflict': '合并冲突',
+      'Something went wrong': '出现问题',
+      'Try again': '重试',
       'Premium model': '高级模型',
+      '100% free agent': '100% 免费智能体',
+      Images: '图像',
+      Balanced: '平衡',
+      "Some models aren't available in Japan yet": '部分模型暂未在日本提供',
+      "Some models aren't available on this connection": '当前网络连接暂不提供部分模型',
+      "We couldn't confirm your region, so we're showing models available everywhere":
+        '无法确认你所在的地区，因此目前只显示全球可用的模型',
+      "We couldn't finish a network check, so we're showing models available everywhere":
+        '网络检查未能完成，因此目前只显示全球可用的模型',
       Queue: '队列',
       Files: '文件',
       Changes: '更改',
@@ -79,6 +90,11 @@
       'Could not start sign-in — Freebuff’s local service is not responding. Restart the app.':
         '无法开始登录 — Freebuff 本地服务无响应。请重启应用。',
       'Could not start sign-in.': '无法开始登录。',
+      'Files open as tabs in the main window': '文件将在主窗口中以标签页打开',
+      'Could not open tab': '无法打开标签页',
+      'Could not reopen that tab': '无法重新打开该标签页',
+      'Could not load this tab': '无法加载该标签页',
+      'The conversation changed underneath the edit — try again': '编辑期间会话已发生变化 — 请重试',
 
       // Composer and messages
       'Type a message — / for skills, @ for files': '输入消息 — / 选择技能，@ 引用文件',
@@ -172,6 +188,7 @@
       'Opening your workspace…': '正在打开工作区…',
       'Choosing a folder needs the desktop app.': '选择文件夹需要使用桌面应用。',
       'Use an isolated workspace': '使用隔离工作区',
+      'Could not open your workspace': '无法打开工作区',
       'Could not set the starting branch': '无法设置起始分支',
       'Freebuff needs Git Bash': 'Freebuff 需要 Git Bash',
       'Agents write shell commands in bash, which Windows doesn’t ship. Git for Windows includes it and takes about a minute to install.':
@@ -182,11 +199,27 @@
       'Weekly limit': '每周限额',
       'Daily limit': '每日限额',
       '1 tab only': '仅限 1 个标签页',
+      'Refer friends for more free sessions': '邀请好友，获得更多免费会话',
+      'Copy invite link': '复制邀请链接',
+      '✓ Copied!': '✓ 已复制！',
+      'GLM 5.2 dashboard ↗': 'GLM 5.2 面板 ↗',
+      'Claim bounties and track referrals': '领取奖励并查看邀请进度',
+      'Referrals qualify once a GitHub account (4+ months old) is connected':
+        '关联注册满 4 个月的 GitHub 账户后，邀请才会计入奖励',
+      'Connect GitHub to qualify ↗': '关联 GitHub 以满足条件 ↗',
+      'GLM 5.2 unlocked': 'GLM 5.2 已解锁',
+      'Complete a bounty to unlock': '完成一个悬赏任务即可解锁',
+      'earned from bounties': '通过悬赏任务获得',
+      'GLM 5.2 — today’s sessions used': 'GLM 5.2 — 今日会话已用尽',
+      'Refer friends to unlock GLM 5.2': '邀请好友以解锁 GLM 5.2',
+      'Each qualified referral earns a daily 1-hour session of the most powerful open-source model':
+        '每位符合条件的受邀好友每天可获得一个 1 小时会话，用于最强大的开源模型',
 
       // Queue and execution
       Resume: '继续',
       'Resume the queue': '继续队列',
       'Close tab when done': '完成后关闭标签页',
+      'Close tab when queue finishes': '队列完成后关闭标签页',
       'Tab close scheduled': '已计划关闭标签页',
       'Nothing is running or queued': '没有正在运行或排队的任务',
       'Auto-run is deciding what is next': '自动运行正在决定下一步',
@@ -221,6 +254,7 @@
       'working…': '处理中…',
       'Thinking…': '思考中…',
       'Waiting for this thread to finish': '等待此任务完成',
+      'Wait for this thread to finish': '等待此任务完成',
       'Forking…': '正在创建分支…',
       'Prompt history': '提示历史',
       'In progress': '进行中',
@@ -236,6 +270,41 @@
       'Read docs': '读取文档',
       'Edit notebook': '编辑笔记本',
 
+      // Mission controls added in Freebuff 0.0.64
+      Mission: '目标',
+      'Edit mission': '编辑目标',
+      'Mission prompt': '目标提示',
+      Effort: '投入程度',
+      'Minimal — only a major concrete gain': '最小 — 仅追求重大且具体的改进',
+      'Lean — buy clear improvements': '精简 — 追求明确改进',
+      'Balanced — refine while gains are clear': '平衡 — 在收益明确时继续改进',
+      'Thorough — pursue smaller credible gains': '详尽 — 追求较小但可信的改进',
+      'Exhaustive — stop when gains are marginal': '穷尽 — 改进收益变小后停止',
+      Explore: '探索',
+      Commit: '提交',
+      'Merge PR': '合并 PR',
+      Custom: '自定义',
+      'Write your own': '自行编写',
+      'Investigate and report back, changing nothing': '调查并报告结果，不做任何更改',
+      'Do the work and commit locally, but never push': '完成工作并在本地提交，但绝不推送',
+      'Take it all the way to a merged pull request': '一直推进到拉取请求合并完成',
+      "Complete the user's request fully. When the work is correct, lean, and verified, commit it, open a pull request, drive its checks to green, and merge it.":
+        '完整完成用户请求。工作正确、精简且经过验证后，提交更改、创建拉取请求、确保检查通过并合并。',
+      'What finishing looks like, and what happens to the finished work.':
+        '完成目标的标准，以及完成后的处理方式。',
+      'Set a mission to keep working toward automatically once the queue finishes':
+        '队列完成后自动继续推进此目标',
+      'Working toward this mission automatically once the queue finishes. Anything you queue takes over.':
+        '队列完成后将自动推进此目标。你加入队列的任务会优先执行。',
+      'Mission is deciding what is next': '目标正在决定下一步',
+      'Could not change the mission': '无法更改目标',
+      'Could not change mission effort': '无法更改目标投入程度',
+      'Could not save the mission': '无法保存目标',
+      'Pause queued work': '暂停排队中的任务',
+      'Let the current turn finish, then pause queued work': '等待当前任务完成后，再暂停排队中的任务',
+      'Pause the queue': '暂停队列',
+      'Could not pause the queue': '无法暂停队列',
+
       // Welcome, loading and empty states
       'Welcome to Freebuff': '欢迎使用 Freebuff',
       'Start building with Freebuff': '开始使用 Freebuff 构建',
@@ -247,7 +316,6 @@
         '正在等待浏览器完成登录 — 此页面会自动继续。',
       'Loading thread…': '正在加载任务…',
       'Couldn’t load this thread': '无法加载此任务',
-      'Try again': '重试',
       'Connecting…': '正在连接…',
       'Reconnecting…': '正在重新连接…',
 
@@ -491,7 +559,105 @@
     }),
   )
 
+  let regionNameTranslations = null
+
+  function translateRegionName(region) {
+    if (region === 'your region') return '你所在的地区'
+    if (!regionNameTranslations) {
+      regionNameTranslations = new Map()
+      try {
+        const englishNames = new Intl.DisplayNames(['en'], { type: 'region' })
+        const chineseNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' })
+        for (let first = 65; first <= 90; first += 1) {
+          for (let second = 65; second <= 90; second += 1) {
+            const code = String.fromCharCode(first, second)
+            const english = englishNames.of(code)
+            const chinese = chineseNames.of(code)
+            if (english && english !== code && chinese && chinese !== code) {
+              regionNameTranslations.set(english, chinese)
+            }
+          }
+        }
+      } catch {
+        // Keep the English region name when Intl.DisplayNames is unavailable.
+      }
+    }
+    return regionNameTranslations.get(region) ?? region
+  }
+
+  function translateUnavailableRegion(_match, region) {
+    return `部分模型暂未在${translateRegionName(region)}提供`
+  }
+
+  function translatePrivacyConnection(_match, signalList) {
+    const labels = {
+      'anonymized network': '匿名网络',
+      proxy: '代理',
+      relay: '中继',
+      'residential proxy': '住宅代理',
+      Tor: 'Tor',
+      VPN: 'VPN',
+      'hosting network': '托管网络',
+      'privacy service': '隐私服务',
+    }
+    const translatedSignals = signalList
+      .split(/,\s*(?:or\s+)?|\s+or\s+/)
+      .filter(Boolean)
+      .map((signal) => labels[signal] ?? signal)
+      .join('、')
+    return `检测到正在使用${translatedSignals}；使用直连网络可获得更多模型`
+  }
+
   const patterns = [
+    [
+      /^DeepSeek V4 Flash (\d{2}\/\d{2}) is paused here after a steep price increase — pausing it is what keeps these sessions free for everyone\. We're working to bring it back\.$/,
+      'DeepSeek V4 Flash $1 因价格大幅上涨已在此暂停；暂停该模型有助于继续为所有人提供免费会话。我们正努力恢复提供。',
+    ],
+    [/^Some models aren't available in (.+) yet$/, translateUnavailableRegion],
+    [/^Using a (.+)\? More models are available on a direct connection$/, translatePrivacyConnection],
+    [
+      /^GLM 5\.2 promo — bounties pay up to (\d+) a day$/,
+      'GLM 5.2 活动 — 悬赏任务每天最多奖励 $1 个会话',
+    ],
+    [/^(\d+) left today · ends (.+)$/, '今日剩余 $1 个会话 · 结束时间：$2'],
+    [/^Complete a bounty to unlock · ends (.+)$/, '完成一个悬赏任务即可解锁 · 结束时间：$1'],
+    [/^\+(\d+) sessions?\/day from referrals$/, '邀请奖励：每天 +$1 个会话'],
+    [
+      /^(\d+) sessions? left today · resets in (.+) · earned from bounties$/,
+      '今日剩余 $1 个会话 · 将在 $2 后重置 · 通过悬赏任务获得',
+    ],
+    [
+      /^(\d+) sessions? left today · earned from bounties$/,
+      '今日剩余 $1 个会话 · 通过悬赏任务获得',
+    ],
+    [
+      /^(\d+) sessions? left today · resets in (.+) · invite friends for \+1\/day \((\d+) earned\)$/,
+      '今日剩余 $1 个会话 · 将在 $2 后重置 · 邀请好友每天增加 1 个会话（已获得 $3）',
+    ],
+    [
+      /^(\d+) sessions? left today · invite friends for \+1\/day \((\d+) earned\)$/,
+      '今日剩余 $1 个会话 · 邀请好友每天增加 1 个会话（已获得 $2）',
+    ],
+    [
+      /^Resets in (.+) · refer more friends for \+1\/day \((\d+) earned\)$/,
+      '将在 $1 后重置 · 继续邀请好友每天增加 1 个会话（已获得 $2）',
+    ],
+    [
+      /^refer more friends for \+1\/day \((\d+) earned\)$/,
+      '继续邀请好友每天增加 1 个会话（已获得 $1）',
+    ],
+    [
+      /^Each qualified referral adds \+1 session per day \(up to \+(\d+)\)$/,
+      '每位符合条件的受邀好友每天增加 1 个会话（最多 +$1）',
+    ],
+    [/^Max bonus earned \((\d+)\/(\d+)\)$/, '已获得最高奖励（$1/$2）'],
+    [
+      /^Refer more friends for \+1\/day \((\d+)\/(\d+)\)$/,
+      '继续邀请好友，每天增加 1 个会话（$1/$2）',
+    ],
+    [/^invite friends for \+1\/day \((\d+) earned\)$/, '邀请好友，每天增加 1 个会话（已获得 $1）'],
+    [/^(\d+) sessions? left today$/, '今日剩余 $1 个会话'],
+    [/^Mission stopped:\s*(.+)$/, '目标已停止：$1'],
     [
       /^Used (\d+(?:\.\d+)?) (premium )?sessions? so far\.\s+Stays active between turns;\s+ends when you close the tab or its 1-hour (?:window|session) expires\.\s+(\d+(?:\.\d+)?\/\d+(?:\.\d+)?) (premium )?sessions used (today|this week)\.\s+(Specific to this model|Shared across all premium models|Shared across all available free models)\.\s+Each lasts up to 1 hour;\s+closing the tab ends it early, counts only time used \(rounded up to 0\.1\)\.\s+Resets (.+)\.$/,
       translateActiveSessionTooltip,
