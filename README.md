@@ -4,20 +4,20 @@
 
 ## 兼容性
 
-- 补丁版本：`0.4.0`
+- 补丁版本：`0.4.1`
 - 支持版本：**Windows 桌面版 Freebuff 0.0.64.0**
-- 不支持网页版、macOS、Linux 或其他 Freebuff 版本。
+- 已测试 Freebuff `0.0.65.0`，通过强制安装后基本可以使用，但不保证所有界面与功能完全兼容。
+- 仅适用于 Windows 桌面版；不支持网页版、macOS 或 Linux，其他 Freebuff 版本未经验证。
 
-## 0.4.0 更新
+## 0.4.1 更新
 
-- 支持版本由 Freebuff `0.0.63.0` 更新为 `0.0.64.0`，保留 0.3.0 的既有译文。
-- 新增“目标”（Mission）、投入程度、自动推进、队列暂停、标签页及新版错误提示。
-- 补齐模型选择弹窗、国家/网络限制、模型暂停原因和邀请奖励的多状态文案。
-- 一键安装现可在版本不一致时进入强制安装确认，并支持从旧清单安全迁移到新的备份链。
+- 修复了版本不一致时旧清单被误判，导致不能强制更新的 bug。
+- 官方更新已干净移除旧补丁时，现在可以进入强制安装确认并建立新的备份链。
+- 继承 0.4.0 的翻译内容和安全检查，补丁版本更新为 `0.4.1`。
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.4.0.zip`，完整解压并关闭 Freebuff，然后运行：
+从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.4.1.zip`，完整解压并关闭 Freebuff，然后运行：
 
 - `Install-Freebuff-Zh.cmd`：一键安装或刷新。
 - `Restore-Freebuff-Zh.cmd`：一键还原安装前的官方文件。

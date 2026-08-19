@@ -13,7 +13,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$PatchVersion = '0.4.0'
+$PatchVersion = '0.4.1'
 $TestedAppVersion = '0.0.64.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
@@ -304,6 +304,7 @@ $InjectedPatchVersion = if ($InjectedPatchVersionMatch.Success) { $InjectedPatch
 $ManifestInstalled = [bool](Get-PropertyValue -InputObject $manifest -Name 'Installed')
 $ManifestAppVersion = Get-PropertyValue -InputObject $manifest -Name 'AppVersion'
 $ManifestPatchVersion = Get-PropertyValue -InputObject $manifest -Name 'PatchVersion'
+$ManifestBackupDir = Get-PropertyValue -InputObject $manifest -Name 'BackupDir'
 $ManifestStartupPatchEnabled = [bool](Get-PropertyValue -InputObject $manifest -Name 'StartupPatchEnabled')
 $ManifestMainAssetName = Get-PropertyValue -InputObject $manifest -Name 'MainAssetName'
 $ManifestMainAssetHash = Get-PropertyValue -InputObject $manifest -Name 'MainAssetHash'
@@ -340,9 +341,10 @@ if ($HasMarker -and $PatchAssetPresent) {
     $PatchState = 'PartialInstallation'
 } elseif ($ManifestInstalled) {
     if (
-        ($ManifestAppVersion -eq '0.0.63.0') -and
-        ($ManifestPatchVersion -eq '0.3.0') -and
-        ($CurrentVersion -eq $TestedAppVersion) -and
+        (-not [string]::IsNullOrWhiteSpace([string]$ManifestAppVersion)) -and
+        ($ManifestAppVersion -ne $CurrentVersion) -and
+        (-not [string]::IsNullOrWhiteSpace([string]$ManifestBackupDir)) -and
+        (Test-Path -LiteralPath $ManifestBackupDir -PathType Container) -and
         ($StartupPatchInfo.State -eq 'Unpatched')
     ) {
         $PatchState = 'UpdatedAppNeedsInstall'
@@ -636,9 +638,9 @@ $PreviousPatchVersion = $null
 $historyDir = $null
 
 if ($PatchState -eq 'UpdatedAppNeedsInstall') {
-    $PreviousBackupDir = Get-PropertyValue -InputObject $manifest -Name 'BackupDir'
+    $PreviousBackupDir = $ManifestBackupDir
     if ([string]::IsNullOrWhiteSpace([string]$PreviousBackupDir) -or -not (Test-Path -LiteralPath $PreviousBackupDir -PathType Container)) {
-        throw "The previous 0.3.0 backup directory is missing, so migration cannot safely preserve its history: $PreviousBackupDir"
+        throw "The previous patch backup directory is missing, so migration cannot safely preserve its history: $PreviousBackupDir"
     }
     $PreviousAppVersion = $ManifestAppVersion
     $PreviousPatchVersion = $ManifestPatchVersion
