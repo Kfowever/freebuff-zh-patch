@@ -1,6 +1,8 @@
-# Freebuff Desktop 简体中文补丁
+# Freebuff Desktop 简体中文汉化补丁 / Simplified Chinese Localization Patch
 
-适用于 Freebuff Windows 桌面版的非官方简体中文界面补丁，不包含 Freebuff 本体。
+适用于 Freebuff Windows 桌面版的非官方简体中文汉化补丁（中文语言包 / Simplified Chinese localization patch），提供 Freebuff Desktop 中文界面，不包含 Freebuff 本体。
+
+如果你正在寻找 **Freebuff 中文版、Freebuff 汉化、Freebuff Windows 中文补丁、Freebuff Chinese localization**，本项目提供一键安装、自动备份与一键恢复英文的 Windows 汉化方案。
 
 ## 兼容性
 
