@@ -6,7 +6,7 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.4.1'
+  const PATCH_VERSION = '0.5.0'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
@@ -51,6 +51,9 @@
       Collapsed: '已折叠',
       'Projects': '项目',
       'Open project': '打开项目',
+      'Open project…': '打开项目…',
+      'Start your streak': '开始连续使用',
+      'Threads you close land here.': '你关闭的任务会显示在这里。',
       'Thread catalog': '任务目录',
       Active: '进行中',
       Archived: '已归档',
@@ -75,6 +78,7 @@
 
       // Account and appearance
       Account: '账户',
+      'Your account': '你的账户',
       Appearance: '外观',
       Light: '浅色',
       Dark: '深色',
@@ -90,6 +94,20 @@
       'Could not start sign-in — Freebuff’s local service is not responding. Restart the app.':
         '无法开始登录 — Freebuff 本地服务无响应。请重启应用。',
       'Could not start sign-in.': '无法开始登录。',
+      'Freebuff sign-in needed': '需要登录 Freebuff',
+      'Message not sent': '消息未发送',
+      'Message not queued': '消息未加入队列',
+      'Could not stop the turn': '无法停止当前轮次',
+      'Could not resume the queue': '无法恢复队列',
+      'Could not switch agent': '无法切换智能体',
+      'Could not change reasoning effort': '无法更改推理投入程度',
+      'Could not switch agent mode': '无法切换智能体模式',
+      'Could not change workspace mode': '无法更改工作区模式',
+      'Could not rename this tab': '无法重命名此标签页',
+      'Could not edit message': '无法编辑消息',
+      'Administrator approval required': '需要管理员审批',
+      'Freebuff needs your approval to run an administrator command':
+        'Freebuff 需要你的批准才能运行管理员命令',
       'Files open as tabs in the main window': '文件将在主窗口中以标签页打开',
       'Could not open tab': '无法打开标签页',
       'Could not reopen that tab': '无法重新打开该标签页',
@@ -113,6 +131,12 @@
       'Copy command': '复制命令',
       'Revert message': '还原此消息',
       'Fork from here': '从此处分支',
+      'Fork chat and current workspace files into a new isolated thread':
+        '将聊天和当前工作区文件复制到新的隔离任务',
+      'Agent mode': '智能体模式',
+      Build: '构建',
+      Plan: '计划',
+      'Plan mode — describe what the agent should design': '计划模式 — 描述希望智能体设计的内容',
       'Give feedback': '提供反馈',
       'Suggested next steps': '建议的后续步骤',
       Skills: '技能',
@@ -132,6 +156,7 @@
       'Remove terminal context': '移除终端上下文',
       'Queue paused after an error.': '队列因错误暂停。',
       'Queue paused.': '队列已暂停。',
+      'The queue is paused.': '队列已暂停。',
       'Resume it, or send a message to continue.': '恢复队列，或发送消息以继续。',
       'Resume queue': '恢复队列',
       'Send and resume queue (Enter)': '发送并恢复队列（Enter）',
@@ -155,6 +180,10 @@
       'Minimize window': '最小化窗口',
       'Maximize window': '最大化窗口',
       'Restore window': '还原窗口',
+      'Closed tabs': '已关闭的标签页',
+      'Open tabs': '打开的标签页',
+      'Search closed tabs': '搜索已关闭的标签页',
+      'Closing this tab…': '正在关闭此标签页…',
       'Jump to new messages': '跳到新消息',
       'Jump to the latest': '跳到最新消息',
       'Scroll to new messages': '滚动到新消息',
@@ -176,6 +205,25 @@
       'Include AGENTS.md': '包含 AGENTS.md',
       'Include your project’s AGENTS.md (or CLAUDE.md) instructions in the agent’s context. Applies to every thread from its next message.':
         '将项目中的 AGENTS.md（或 CLAUDE.md）指令加入智能体上下文。从下一条消息开始，适用于该项目的所有任务。',
+      Connectors: '连接器',
+      'Connectors…': '连接器…',
+      'Close connectors': '关闭连接器',
+      'Search connectors': '搜索连接器',
+      'No servers configured yet. Add one to': '尚未配置服务器。请添加到',
+      ', then reload.': '，然后重新加载。',
+      'Add connector': '添加连接器',
+      'Add connector…': '添加连接器…',
+      'Clear search': '清除搜索',
+      'Reload from disk': '从磁盘重新加载',
+      'Back to skills': '返回技能列表',
+      'Search skills to add…': '搜索要添加的技能…',
+      'Open a project to get started': '打开一个项目以开始',
+      'Locate folder…': '定位文件夹…',
+      'Finish signing in to your connector in the browser.': '请在浏览器中完成连接器登录。',
+      'Nothing has started yet. Adding this connector runs a program on your computer with the same permissions as you. Its tool list cannot be read without starting it, so you are asked again afterwards about what it may do.':
+        '尚未启动任何程序。添加此连接器会以与你相同的权限在电脑上运行程序；启动前无法读取工具列表，之后还会再次询问允许执行的操作。',
+      'Nothing has been contacted yet. Adding this connector lets Freebuff talk to this address, and it may ask you to sign in. Its tool list cannot be read without connecting, so you are asked again afterwards about what it may do.':
+        '尚未连接任何地址。添加此连接器后 Freebuff 可以与该地址通信，并可能要求你登录；连接前无法读取工具列表，之后还会再次询问允许执行的操作。',
       'Starting Freebuff orchestrator…': 'Freebuff 编排器正在启动…',
       Isolated: '隔离模式',
       Branch: '分支',
@@ -186,6 +234,9 @@
       'Couldn’t open Terminal': '无法打开终端',
       'Couldn’t open your workspace': '无法打开工作区',
       'Opening your workspace…': '正在打开工作区…',
+      'Opening your saved workspace took too long.': '打开已保存的工作区耗时过长。',
+      'Open without saved tabs': '不恢复已保存的标签页',
+      'Your conversations and project files stay saved.': '你的会话和项目文件仍会保留。',
       'Choosing a folder needs the desktop app.': '选择文件夹需要使用桌面应用。',
       'Use an isolated workspace': '使用隔离工作区',
       'Could not open your workspace': '无法打开工作区',
@@ -199,6 +250,65 @@
       'Weekly limit': '每周限额',
       'Daily limit': '每日限额',
       '1 tab only': '仅限 1 个标签页',
+      'Limited-time trial': '限时试用',
+      'Limited access': '受限访问',
+      'Lower limits': '额度降低',
+      'Meet Freebucks': '认识 Freebucks',
+      'Sessions are now bought with Freebucks — a daily allowance you spend on any model.':
+        '现在使用 Freebucks 购买会话——这是可用于任意模型的每日额度。',
+      'A fresh pool every day': '每天刷新额度',
+      'Your daily Freebucks refill at midnight Pacific. Nothing to earn, nothing to wait for.':
+        '你的 Freebucks 每天太平洋时间午夜补充，无需赚取，也无需等待。',
+      'No more weekly or monthly session caps': '不再设置每周或每月会话上限',
+      'The only thing that counts is what you spend. An hour of any model is one price, charged once when the session starts.':
+        '只按实际支出计算。任意模型的一小时会话均按一个价格计费，并在会话开始时一次扣除。',
+      'Spend it how you like': '按需使用',
+      'Every model shows its price per hour. Pick the cheap one all day, or save up for the expensive one.':
+        '每个模型都会显示每小时价格。可以全天使用便宜模型，也可以积攒额度使用高价模型。',
+      'Got it': '知道了',
+      Free: '免费',
+      Freebucks: 'Freebucks',
+      'Free sessions': '免费会话',
+      'Premium sessions': '高级会话',
+      'Premium session time remaining': '高级会话剩余时间',
+      'Get more sessions': '获取更多会话',
+      'Get more': '获取更多',
+      'Use wallet': '使用钱包余额',
+      Switch: '切换',
+      Upgrade: '升级',
+      'Open Earn': '打开“赚取”页面',
+      'See plans': '查看方案',
+      'Refer friends → earn Freebucks': '邀请好友 → 赚取 Freebucks',
+      'Each qualified referral pays Freebucks, claimed on the Earn page.':
+        '每位符合条件的受邀好友都会带来 Freebucks，可在“赚取”页面领取。',
+      'Engage with a post, level up, and get more daily sessions':
+        '参与帖子互动、提升等级并获得更多每日会话',
+      'Referrals, bounties and Trust — everything that pays Freebucks':
+        '邀请、悬赏和 Trust——所有可获得 Freebucks 的方式',
+      'Reward session unlocked': '奖励会话已解锁',
+      'Earned sessions': '已赚取会话',
+      'your plan sessions': '你的方案会话',
+      'daily plan sessions': '每日方案会话',
+      'weekly plan sessions': '每周方案会话',
+      'monthly plan sessions': '每月方案会话',
+      'Free sessions are used first · today resets in': '优先使用免费会话 · 今日额度重置倒计时',
+      'Unlimited messages and tool calls until it ends. Already paid for — switching models ends it and buys a new one.':
+        '结束前可不限量使用消息和工具调用。费用已支付——切换模型会结束当前会话并购买新会话。',
+      'Go to tab →': '前往标签页 →',
+      'Deep reasoning': '深度推理',
+      'Smart & fast': '智能且快速',
+      'Most capable model for complex, demanding work': '能力最强，适合复杂且高要求的工作',
+      'Reliable agentic workhorse for everyday tasks': '可靠的智能体主力模型，适合日常任务',
+      'Balanced agentic coding model for everyday work': '均衡的智能体编程模型，适合日常工作',
+      'Fast and affordable agentic coding model': '快速且经济的智能体编程模型',
+      'Queues, then falls back · May use data for AI training':
+        '繁忙时排队，随后切换至 DeepSeek V4 Flash · 可能将数据用于 AI 训练',
+      'Queues, then falls back': '繁忙时排队，随后切换至 DeepSeek V4 Flash',
+      'May use data for AI training': '可能将数据用于 AI 训练',
+      'Strong all-around': '综合能力强',
+      daily: '每日',
+      left: '剩余',
+      '/hr': '/小时',
       'Refer friends for more free sessions': '邀请好友，获得更多免费会话',
       'Copy invite link': '复制邀请链接',
       '✓ Copied!': '✓ 已复制！',
@@ -238,6 +348,10 @@
       'Edit prompt': '编辑提示',
       'Drag the row to reorder': '拖动此行以重新排序',
       'Could not delete that item': '无法删除该项目',
+      'This tab will close once the queue finishes. Click to cancel.':
+        '队列完成后将关闭此标签页。点击即可取消。',
+      'Close this tab when the queue finishes. Adds a row to the end of the queue.':
+        '队列完成后关闭此标签页。该操作会在队列末尾添加一行。',
       'Waiting for the model…': '正在等待模型…',
       'Waiting on a background command…': '正在等待后台命令…',
       'Waiting for a Freebuff session…': '正在等待 Freebuff 会话…',
@@ -270,6 +384,21 @@
       'Read docs': '读取文档',
       'Edit notebook': '编辑笔记本',
 
+      // Plan review and agent questions added in Freebuff 0.0.93
+      'Plan approval': '计划审批',
+      'Questions from the agent': '智能体的问题',
+      'The plan is ready for your review': '计划已准备好，等待你审阅',
+      'Freebuff has a question': 'Freebuff 有一个问题',
+      'Copy plan': '复制计划',
+      'Copy plan as Markdown': '将计划复制为 Markdown',
+      'Plan copied': '计划已复制',
+      'Feedback for the next plan revision': '下一次计划修订的反馈',
+      'Previous question': '上一个问题',
+      'Next question': '下一个问题',
+      'Could not send answers': '无法发送回答',
+      'Could not skip the questions': '无法跳过问题',
+      'Changed during agent work': '智能体工作期间发生更改',
+
       // Mission controls added in Freebuff 0.0.64
       Mission: '目标',
       'Edit mission': '编辑目标',
@@ -280,6 +409,11 @@
       'Balanced — refine while gains are clear': '平衡 — 在收益明确时继续改进',
       'Thorough — pursue smaller credible gains': '详尽 — 追求较小但可信的改进',
       'Exhaustive — stop when gains are marginal': '穷尽 — 改进收益变小后停止',
+      'Sprint — roughly complete beats polished': '冲刺 — 大致完成优先于精雕细琢',
+      'Focused — complete and checked': '专注 — 完整并经过检查',
+      'Crafted — correct, clean, and proven': '精制 — 正确、简洁且经过验证',
+      'Thorough — strong on every quality dimension': '详尽 — 各项质量维度均达到高标准',
+      'Exhaustive — the best version you can prove': '穷尽 — 做到能够验证的最佳版本',
       Explore: '探索',
       Commit: '提交',
       'Merge PR': '合并 PR',
@@ -300,6 +434,11 @@
       'Could not change the mission': '无法更改目标',
       'Could not change mission effort': '无法更改目标投入程度',
       'Could not save the mission': '无法保存目标',
+      'Keeps going on its own once the queue is empty.': '队列为空后自动继续执行。',
+      'Saved missions': '已保存的目标',
+      'Save this mission': '保存此目标',
+      'Forget this mission': '忘记此目标',
+      'Keep this mission for other threads and projects': '将此目标保留给其他任务和项目',
       'Pause queued work': '暂停排队中的任务',
       'Let the current turn finish, then pause queued work': '等待当前任务完成后，再暂停排队中的任务',
       'Pause the queue': '暂停队列',
@@ -391,6 +530,16 @@
       'Copied — run it in your terminal': '已复制 — 请在终端运行',
 
       // Codex/Claude integrations
+      Install: '安装',
+      Download: '下载',
+      'Download for Freebuff': '下载供 Freebuff 使用',
+      'Retry download': '重试下载',
+      'Installing…': '正在安装…',
+      'Starting download…': '正在开始下载…',
+      'Step 2 of 2 · Sign in with a Claude Pro, Max, Team, or Enterprise plan':
+        '第 2/2 步 · 使用 Claude Pro、Max、Team 或 Enterprise 方案登录',
+      'Step 2 of 2 · Sign in to Codex with ChatGPT or an API key':
+        '第 2/2 步 · 使用 ChatGPT 或 API 密钥登录 Codex',
       'Codex is signed out': 'Codex 已退出登录',
       'Claude Code is signed out': 'Claude Code 已退出登录',
       'Claude Code is blocked by policy': 'Claude Code 已被策略阻止',
@@ -399,6 +548,16 @@
       'Could not run the update.': '无法执行更新。',
       'Codex updated — send your message again.': 'Codex 已更新 — 请重新发送消息。',
       'Updating…': '正在更新…',
+
+      // Mobile mirroring
+      Mobile: '移动端',
+      "Mirror this computer's open threads to the Freebuff iOS app, and let the phone send messages and approve elevated commands.":
+        '将此电脑中打开的任务镜像到 Freebuff iOS 应用，并允许手机发送消息及批准提权命令。',
+      'Mirror to my phone': '镜像到我的手机',
+      'This computer:': '此电脑：',
+      'Sign in to enable.': '登录后启用。',
+      Off: '关闭',
+      On: '开启',
 
       // Files, diffs, preview, terminal and notes
       'Couldn’t list files': '无法列出文件',
@@ -433,6 +592,9 @@
       'Could not load changes.': '无法加载更改。',
       'Working-tree changes since the last commit': '自上次提交以来的工作树更改',
       'Could not apply the changes.': '无法应用更改。',
+      'Couldn’t open that change in the file browser.': '无法在文件浏览器中打开该更改。',
+      'That file no longer exists. Opened its nearest existing folder instead.':
+        '该文件已不存在，已改为打开最近的现有文件夹。',
       'Apply changes to this folder': '将更改应用到此文件夹',
       'Reading the thread’s workspace…': '正在读取任务工作区…',
       'Follow the details in the thread transcript.': '详情请查看任务记录。',
@@ -459,7 +621,12 @@
       'Couldn’t open this file': '无法打开此文件',
       'Loading file…': '正在加载文件…',
       'Could not read this file': '无法读取此文件',
+      'Could not save this file': '无法保存此文件',
+      'Could not open that folder.': '无法打开该文件夹。',
       'Showing the first 512 KB': '正在显示前 512 KB',
+      'Showing the first 512 KB read-only': '正在以只读方式显示前 512 KB',
+      'This file changed on disk. Reload it before you save again.':
+        '此文件已在磁盘上发生变化，请重新加载后再保存。',
       'Jot an idea for this project…': '记下这个项目的想法…',
       'Nothing jotted yet': '还没有笔记',
       'Capture ideas as they come': '随时记录灵感',
@@ -482,6 +649,47 @@
       'Could not edit that item': '无法编辑该项目',
       "Couldn't send that item": '无法发送该项目',
       'Could not queue that suggestion': '无法将该建议加入队列',
+      'Close sponsor break': '关闭赞助展示',
+      Sponsored: '赞助内容',
+      'Sponsored break': '赞助内容间歇',
+      'Sponsored proposal': '赞助任务提案',
+      'Sponsored proposal options': '赞助任务提案选项',
+      'Starting sponsored thread…': '正在启动赞助任务…',
+      'Sponsored thread running': '赞助任务正在运行',
+      'Sponsored thread committed its work': '赞助任务已提交更改',
+      'Sponsored thread landed a PR': '赞助任务已创建 PR',
+      'Sponsored thread failed': '赞助任务失败',
+      'Sponsored PR merged': '赞助 PR 已合并',
+      'Start sponsored thread': '启动赞助任务',
+      'Create pull request': '创建拉取请求',
+      'View what it did': '查看执行内容',
+      'Watch this run': '查看任务运行情况',
+      'Review the pull request': '审阅拉取请求',
+      'view on GitHub': '在 GitHub 上查看',
+      'Report this proposal': '举报此提案',
+      'Why this?': '为什么会显示此内容？',
+      'Dismiss sponsored proposal': '忽略赞助任务提案',
+      'Dismiss sponsored message': '关闭赞助消息',
+      'Turn off sponsored proposals': '关闭赞助任务提案',
+      'Could not open that sponsored run': '无法打开该赞助任务',
+      'The sponsored thread could not finish. Nothing was changed in your project.':
+        '赞助任务未能完成。你的项目未发生任何更改。',
+      'Matched to what you are building in this project. Sponsored proposals never read your code without your go-ahead.':
+        '根据你在此项目中构建的内容匹配。未经你允许，赞助任务提案绝不会读取代码。',
+      'Sponsored tasks can’t run on Windows yet: Freebuff has no way to keep an advertiser’s commands inside the workspace on this operating system.':
+        '赞助任务目前无法在 Windows 上运行：Freebuff 尚无法在此操作系统中将广告方命令限制在工作区内。',
+      'Sponsored tasks need bubblewrap (`bwrap`) to stay inside the workspace. Install it and reopen this project to accept.':
+        '赞助任务需要 bubblewrap（`bwrap`）才能限制在工作区内运行。请安装后重新打开此项目以接受任务。',
+      'Sponsored tasks need the Freebuff desktop app, which is what asks you to approve the task before it runs. Open this project in the app to accept.':
+        '赞助任务需要 Freebuff 桌面应用；任务运行前由应用请求你的批准。请在应用中打开此项目以接受任务。',
+      'Sponsored tasks can’t run on this operating system: Freebuff has no way to keep an advertiser’s commands inside the workspace here.':
+        '赞助任务无法在此操作系统上运行：Freebuff 无法在这里将广告方命令限制在工作区内。',
+      'Sponsored tasks can’t run here yet.': '赞助任务目前无法在此处运行。',
+      'That model’s tab limit is reached — this tab kept the default.':
+        '该模型的标签页额度已用尽——此标签页已保留默认模型。',
+      'Sign in…': '登录…',
+      'Shell Session': 'Shell 会话',
+      'Learn more': '了解更多',
       'Tell us more': '请详细说明',
       'What happened, and what did you expect?': '发生了什么？你的预期是什么？',
       'Saving is paused until they load': '加载完成前将暂停保存',
@@ -609,6 +817,120 @@
   }
 
   const patterns = [
+    [/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?) daily · resets in (.+)$/, '$1/$2 每日额度 · 将在 $3 后重置'],
+    [/^resets in (.+)$/, '将在 $1 后重置'],
+    [/^On · synced (.+)$/, '开启 · 已于 $1 同步'],
+    [/^Error: (.+)$/, '错误：$1'],
+    [
+      /^(\d+(?:\.\d+)?) Freebucks · Labor Day weekend \(through (.+) PT\)$/,
+      '$1 Freebucks · 劳动节周末（太平洋时间 $2 结束）',
+    ],
+    [
+      /^Peak pricing · \+(\d+(?:\.\d+)?) Freebucks until (.+) PT · May use data for AI training$/,
+      '高峰价格 · 太平洋时间 $2 前额外需要 $1 Freebucks · 可能将数据用于 AI 训练',
+    ],
+    [
+      /^Step 1 of 2 · Download Claude Code (.+) for Freebuff \((\d+) MB; (\d+) MB installed\)\.$/,
+      '第 1/2 步 · 下载供 Freebuff 使用的 Claude Code $1（下载 $2 MB；安装后 $3 MB）。',
+    ],
+    [/^Step 1 of 2 · Downloading Claude Code (.+) · (\d+)%$/, '第 1/2 步 · 正在下载 Claude Code $1 · $2%'],
+    [
+      /^Step 1 of 2 · Verifying and installing Claude Code (.+)$/,
+      '第 1/2 步 · 正在验证并安装 Claude Code $1',
+    ],
+    [
+      /^Step 1 of 2 · Install the Claude Code CLI — the Claude Desktop app does not include it$/,
+      '第 1/2 步 · 安装 Claude Code CLI — Claude Desktop 应用并未包含该组件',
+    ],
+    [/^Step 1 of 2 · Install the (.+) CLI$/, '第 1/2 步 · 安装 $1 CLI'],
+    [/^Update the (.+) CLI · (.+)$/, '更新 $1 CLI · $2'],
+    [/^Freebuff has (\d+) questions$/, 'Freebuff 有 $1 个问题'],
+    [/^Search (\d+) connectors…$/, '搜索 $1 个连接器…'],
+    [/^No connector matches “(.+)”\.$/, '没有匹配“$1”的连接器。'],
+    [
+      /^(\d+(?:\.\d+)?\/\d+(?:\.\d+)?) sessions today\. Each lasts up to 1 hour\. Resets (.+)\.$/,
+      '今日会话：$1。每个会话最长持续 1 小时。重置时间：$2。',
+    ],
+    [
+      /^(\d+(?:\.\d+)?\/\d+(?:\.\d+)?) starts today\. Each start opens up to 1 hour; ending early still uses one start\. Resets (.+)\.$/,
+      '今日启动次数：$1。每次启动可使用最长 1 小时；提前结束仍会消耗一次。重置时间：$2。',
+    ],
+    [
+      /^(\d+(?:\.\d+)?) of today's (\d+(?:\.\d+)?) Freebucks left\. Spent before your wallet, and they do not carry over — refills in (.+)\.$/,
+      '今日 $2 Freebucks 中剩余 $1。优先于钱包余额使用，且不会结转 — 将在 $3 后补充。',
+    ],
+    [
+      /^(\$[\d.]+) of usage left this month, out of (\$[\d.]+)\. That is what your sessions cost to run, not what you are billed\.$/,
+      '本月 $2 使用额度中剩余 $1。这是会话的运行成本，不是向你收取的费用。',
+    ],
+    [/^Out of Freebucks · more in (.+)$/, 'Freebucks 已用尽 · 将在 $1 后补充'],
+    [/^Running low · today's refill in (.+)$/, '余额即将用尽 · 今日额度将在 $1 后补充'],
+    [/^Free sessions are used first · today resets in (.+)$/, '优先使用免费会话 · 今日额度将在 $1 后重置'],
+    [
+      /^Today's Freebucks are spent\. This uses (\d+(?:\.\d+)?) from your wallet and ends your current session\.$/,
+      '今日 Freebucks 已用尽。将从钱包余额中使用 $1，并结束当前会话。',
+    ],
+    [
+      /^Today's Freebucks are spent\. This uses (\d+(?:\.\d+)?) from your wallet\.$/,
+      '今日 Freebucks 已用尽。将从钱包余额中使用 $1。',
+    ],
+    [
+      /^Ends your session and starts a new one for (\d+(?:\.\d+)?) Freebucks\.$/,
+      '结束当前会话，并使用 $1 Freebucks 启动新会话。',
+    ],
+    [
+      /^Premium sessions reset in (.+) · MiMo and V4 Flash stay unmetered$/,
+      '高级会话将在 $1 后重置 · MiMo 和 V4 Flash 仍不计量',
+    ],
+    [/^Today's premium sessions are used · resets in (.+)$/, '今日高级会话已用尽 · 将在 $1 后重置'],
+    [
+      /^(\d+(?:\.\d+)?) Freebucks buys one hour of unlimited messages and tool calls\. Charged once, when the session starts\.$/,
+      '$1 Freebucks 可购买 1 小时不限量消息和工具调用。会话开始时一次扣除。',
+    ],
+    [
+      /^(\d+(?:\.\d+)?) Freebucks an hour, more than the (\d+(?:\.\d+)?) you have left today plus your wallet\.$/,
+      '每小时需要 $1 Freebucks，超过你今日剩余额度与钱包余额之和（$2）。',
+    ],
+    [/^connected · (\d+) tools?$/, '已连接 · $1 个工具'],
+    [/^(\d+)\/(\d+) tabs? in use$/, '已使用 $1/$2 个标签页'],
+    [/^frees in (\d+)m$/, '将在 $1 分钟后释放'],
+    [
+      /^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) premium sessions left today \((\d+(?:\.\d+)?) free \+ (\d+(?:\.\d+)?) from (.+)\)$/,
+      '今日剩余 $1/$2 个高级会话（$3 个免费 + $4 个来自 $5）',
+    ],
+    [
+      /^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) free premium sessions left today$/,
+      '今日剩余 $1/$2 个免费高级会话',
+    ],
+    [
+      /^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) plan sessions left this week$/,
+      '本周剩余 $1/$2 个方案会话',
+    ],
+    [
+      /^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) plan sessions left this billing period$/,
+      '本计费周期剩余 $1/$2 个方案会话',
+    ],
+    [/^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) free sessions left this week$/, '本周剩余 $1/$2 个免费会话'],
+    [/^(\d+(?:\.\d+)?) of (\d+(?:\.\d+)?) free sessions left this month$/, '本月剩余 $1/$2 个免费会话'],
+    [/^(.+) plan usage$/, '$1 方案用量'],
+    [
+      /^That turn failed, so the rest of the queue is paused\. Start running the queued item\.$/,
+      '该轮执行失败，因此队列其余任务已暂停。开始运行排队项目。',
+    ],
+    [
+      /^That turn failed, so the rest of the queue is paused\. Start running the (\d+) queued items\.$/,
+      '该轮执行失败，因此队列其余任务已暂停。开始运行 $1 个排队项目。',
+    ],
+    [/^This tab is stopped\. Start running the queued item\.$/, '此标签页已停止。开始运行排队项目。'],
+    [
+      /^This tab is stopped\. Start running the (\d+) queued items\.$/,
+      '此标签页已停止。开始运行 $1 个排队项目。',
+    ],
+    [/^The queue is paused\. Start running the queued item\.$/, '队列已暂停。开始运行排队项目。'],
+    [
+      /^The queue is paused\. Start running the (\d+) queued items\.$/,
+      '队列已暂停。开始运行 $1 个排队项目。',
+    ],
     [
       /^DeepSeek V4 Flash (\d{2}\/\d{2}) is paused here after a steep price increase — pausing it is what keeps these sessions free for everyone\. We're working to bring it back\.$/,
       'DeepSeek V4 Flash $1 因价格大幅上涨已在此暂停；暂停该模型有助于继续为所有人提供免费会话。我们正努力恢复提供。',

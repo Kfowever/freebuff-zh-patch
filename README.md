@@ -4,20 +4,19 @@
 
 ## 兼容性
 
-- 补丁版本：`0.4.1`
-- 支持版本：**Windows 桌面版 Freebuff 0.0.64.0**
-- 已测试 Freebuff `0.0.65.0`，通过强制安装后基本可以使用，但不保证所有界面与功能完全兼容。
+- 补丁版本：`0.5.0`
+- 支持版本：**Windows 桌面版 Freebuff 0.0.93.0**
 - 仅适用于 Windows 桌面版；不支持网页版、macOS 或 Linux，其他 Freebuff 版本未经验证。
 
-## 0.4.1 更新
+## 0.5.0 更新
 
-- 修复了版本不一致时旧清单被误判，导致不能强制更新的 bug。
-- 官方更新已干净移除旧补丁时，现在可以进入强制安装确认并建立新的备份链。
-- 继承 0.4.0 的翻译内容和安全检查，补丁版本更新为 `0.4.1`。
+- 适配 Freebuff `0.0.93.0`，保留 0.4.1 既有译文。
+- 新增 Freebucks、构建/计划模式、计划审批、连接器和新版目标投入档位翻译。
+- 延续版本不一致时的二次确认强制安装、独立备份和哈希回滚保护。
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.4.1.zip`，完整解压并关闭 Freebuff，然后运行：
+从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.5.0.zip`，完整解压并关闭 Freebuff，然后运行：
 
 - `Install-Freebuff-Zh.cmd`：一键安装或刷新。
 - `Restore-Freebuff-Zh.cmd`：一键还原安装前的官方文件。
@@ -32,7 +31,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\FreebuffZhPatch.ps1" -Act
 
 ## 强制安装
 
-Freebuff 版本与 `0.0.64.0` 不一致时，一键安装会直接显示兼容性警告。只有再次输入单独的 `y` 或 `Y` 才会继续；其他输入、空输入和非交互输入都会取消并返回退出码 `3`。
+Freebuff 版本与 `0.0.93.0` 不一致时，一键安装会直接显示兼容性警告。只有再次输入单独的 `y` 或 `Y` 才会继续；其他输入、空输入和非交互输入都会取消并返回退出码 `3`。
 
 旧调用中的 `-Force` 参数仍然可用，但不能跳过上述确认。强制安装只绕过版本号限制，不能绕过文件缺失、未知 ASAR 布局、残留的跨版本补丁、进程占用、备份或哈希检查。使用不兼容版本可能造成中文缺失、错位、乱码、界面异常或启动失败。
 
@@ -51,5 +50,3 @@ Freebuff 版本与 `0.0.64.0` 不一致时，一键安装会直接显示兼容�
 ## 许可证
 
 本项目采用 [MIT License](LICENSE)。Freebuff 及其商标、软件版权归其各自权利人所有。
-
-> 小提醒：Freebuff 目前暂时不支持 DeepSeek V4 Flash 07/31 模型。
