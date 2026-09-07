@@ -13,7 +13,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$PatchVersion = '0.5.0'
+$PatchVersion = '0.5.3'
 $TestedAppVersion = '0.0.93.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
@@ -39,6 +39,45 @@ function Get-Sha256 {
 function Get-AppVersion {
     param([Parameter(Mandatory = $true)][string]$ExePath)
     return [Diagnostics.FileVersionInfo]::GetVersionInfo($ExePath).ProductVersion
+}
+
+function Assert-FileHash {
+    param([string]$Path, [string]$ExpectedHash, [string]$Description)
+    if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($ExpectedHash) -or
+        -not (Test-Path -LiteralPath $Path -PathType Leaf) -or
+        (Get-Sha256 -Path $Path) -ne $ExpectedHash) {
+        throw "$Description is missing or changed. No refresh was performed; existing files and backups were preserved."
+    }
+}
+
+function Restore-VerifiedFile {
+    param(
+        [string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination,
+        [string]$ExpectedHash,
+        [bool]$OriginallyExisted = $true
+    )
+    try {
+        if ($OriginallyExisted) {
+            if ([string]::IsNullOrWhiteSpace($ExpectedHash)) { throw 'The recovery hash is missing.' }
+            if ((Get-Sha256 -Path $Destination) -ne $ExpectedHash) {
+                if ([string]::IsNullOrWhiteSpace($Source) -or (Get-Sha256 -Path $Source) -ne $ExpectedHash) {
+                    throw 'The recovery copy is missing or has an unexpected hash.'
+                }
+                Copy-Item -LiteralPath $Source -Destination $Destination -Force -ErrorAction Stop
+            }
+            if ((Get-Sha256 -Path $Destination) -ne $ExpectedHash) { throw 'Recovery hash verification failed.' }
+        } else {
+            if (Test-Path -LiteralPath $Destination -PathType Leaf) {
+                Remove-Item -LiteralPath $Destination -Force -ErrorAction Stop
+            }
+            if (Test-Path -LiteralPath $Destination) { throw 'The newly installed file could not be removed.' }
+        }
+        return $true
+    } catch {
+        Write-Warning "Recovery failed for $Destination. Recovery copy: $Source. Reason: $($_.Exception.Message)"
+        return $false
+    }
 }
 
 function Get-MainAssetInfo {
@@ -290,7 +329,7 @@ $MainAsset = Get-MainAssetInfo -IndexText $CurrentIndexText -UiDir $UiDir
 $manifest = $null
 if (Test-Path -LiteralPath $ManifestPath -PathType Leaf) {
     try {
-        $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+        $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     } catch {
         throw "The patch manifest is not valid JSON: $ManifestPath"
     }
@@ -457,14 +496,15 @@ if ($Action -eq 'Restore') {
     $restoreRollbackAsar = Join-Path (Split-Path -Parent $AppAsarPath) ('.freebuff-zh-asar-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $restoreRollbackAsset = Join-Path $AssetsDir ('.freebuff-zh-asset-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $restorePatchedAssetExisted = Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf
-    Copy-Item -LiteralPath $IndexPath -Destination $restoreRollbackIndex -Force
-    if ($restoreStartupPatch) {
-        Copy-Item -LiteralPath $AppAsarPath -Destination $restoreRollbackAsar -Force
-    }
-    if ($restorePatchedAssetExisted) {
-        Copy-Item -LiteralPath $InstalledPatchAsset -Destination $restoreRollbackAsset -Force
-    }
+    $restoreRollbackSucceeded = $true
     try {
+        Copy-Item -LiteralPath $IndexPath -Destination $restoreRollbackIndex -Force
+        if ($restoreStartupPatch) {
+            Copy-Item -LiteralPath $AppAsarPath -Destination $restoreRollbackAsar -Force
+        }
+        if ($restorePatchedAssetExisted) {
+            Copy-Item -LiteralPath $InstalledPatchAsset -Destination $restoreRollbackAsset -Force
+        }
         Copy-Item -LiteralPath $manifest.BackupIndexPath -Destination $restoreTemp -Force
         Move-Item -LiteralPath $restoreTemp -Destination $IndexPath -Force
         if ($restoreStartupPatch) {
@@ -487,20 +527,22 @@ if ($Action -eq 'Restore') {
         Write-Host "The Freebuff Chinese patch was restored. The original backup remains at: $($manifest.BackupDir)"
     } catch {
         $failureMessage = $_.Exception.Message
-        try { Copy-Item -LiteralPath $restoreRollbackIndex -Destination $IndexPath -Force -ErrorAction Stop } catch {}
-        if ($restoreStartupPatch -and (Test-Path -LiteralPath $restoreRollbackAsar -PathType Leaf)) {
-            try { Copy-Item -LiteralPath $restoreRollbackAsar -Destination $AppAsarPath -Force -ErrorAction Stop } catch {}
+        if (-not (Restore-VerifiedFile -Source $restoreRollbackIndex -Destination $IndexPath -ExpectedHash $CurrentIndexHash)) {
+            $restoreRollbackSucceeded = $false
         }
-        try {
-            if ($restorePatchedAssetExisted -and (Test-Path -LiteralPath $restoreRollbackAsset -PathType Leaf)) {
-                Copy-Item -LiteralPath $restoreRollbackAsset -Destination $InstalledPatchAsset -Force -ErrorAction Stop
-            } elseif (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf) {
-                Remove-Item -LiteralPath $InstalledPatchAsset -Force -ErrorAction Stop
+        if ($restoreStartupPatch) {
+            if (-not (Restore-VerifiedFile -Source $restoreRollbackAsar -Destination $AppAsarPath -ExpectedHash $CurrentAppAsarHash)) {
+                $restoreRollbackSucceeded = $false
             }
-        } catch {}
-        throw "Chinese patch restore failed and the patched files were restored when possible. Reason: $failureMessage"
+        }
+        if (-not (Restore-VerifiedFile -Source $restoreRollbackAsset -Destination $InstalledPatchAsset -ExpectedHash $InstalledPatchHash -OriginallyExisted $restorePatchedAssetExisted)) {
+            $restoreRollbackSucceeded = $false
+        }
+        throw "Chinese patch restore failed. Rollback verified: $restoreRollbackSucceeded. If incomplete, recovery copies remain beside the app files. Reason: $failureMessage"
     } finally {
-        foreach ($temporaryPath in @($restoreTemp, $restoreAsarTemp, $restoreRollbackIndex, $restoreRollbackAsar, $restoreRollbackAsset)) {
+        $restoreCleanupPaths = @($restoreTemp, $restoreAsarTemp)
+        if ($restoreRollbackSucceeded) { $restoreCleanupPaths += @($restoreRollbackIndex, $restoreRollbackAsar, $restoreRollbackAsset) }
+        foreach ($temporaryPath in $restoreCleanupPaths) {
             if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
                 Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
             }
@@ -537,12 +579,23 @@ if ($HasMarker) {
     if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
         throw 'A localization marker exists, but the patch manifest is missing. Inspect the installation directory or restore from a backup first.'
     }
-    $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($manifest.AppVersion -ne $CurrentVersion) {
         throw 'The localization marker belongs to another Freebuff version. Refresh stopped to protect the existing backup chain.'
     }
     if ($null -eq $InjectedPatchVersion) {
         throw 'The localization marker exists, but its injected patch version is missing. Installation stopped.'
+    }
+    # A new patch asset is allowed; drift in already installed files is not.
+    Assert-FileHash -Path $IndexPath -ExpectedHash $manifest.PatchedIndexHash -Description 'Installed index.html'
+    Assert-FileHash -Path $InstalledPatchAsset -ExpectedHash $manifest.PatchedAssetHash -Description 'Installed translation asset'
+    if ($MainAsset.Name -ne $manifest.MainAssetName) { throw 'The main UI asset name changed. Refresh stopped.' }
+    Assert-FileHash -Path $MainAsset.Path -ExpectedHash $manifest.MainAssetHash -Description 'Main UI asset'
+    Assert-FileHash -Path $manifest.BackupIndexPath -ExpectedHash $manifest.OriginalIndexHash -Description 'Original index.html backup'
+    if ($ManifestStartupPatchEnabled) {
+        Assert-FileHash -Path $AppAsarPath -ExpectedHash $ManifestPatchedAppAsarHash -Description 'Installed app.asar'
+    } elseif (-not [string]::IsNullOrWhiteSpace([string](Get-PropertyValue -InputObject $manifest -Name 'OriginalAppAsarHash'))) {
+        Assert-FileHash -Path $AppAsarPath -ExpectedHash $manifest.OriginalAppAsarHash -Description 'Unpatched app.asar'
     }
     $manifestBackupDir = Get-PropertyValue -InputObject $manifest -Name 'BackupDir'
     if ([string]::IsNullOrWhiteSpace([string]$manifestBackupDir) -or -not (Test-Path -LiteralPath $manifestBackupDir -PathType Container)) {
@@ -574,6 +627,7 @@ if ($HasMarker) {
     $rollbackIndex = Join-Path $UiDir ('.freebuff-zh-index-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $rollbackAsset = Join-Path $AssetsDir ('.freebuff-zh-asset-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $rollbackAsar = Join-Path (Split-Path -Parent $AppAsarPath) ('.freebuff-zh-asar-rollback-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    $refreshRollbackSucceeded = $true
     try {
         Copy-Item -LiteralPath $IndexPath -Destination $rollbackIndex -Force
         Copy-Item -LiteralPath $InstalledPatchAsset -Destination $rollbackAsset -Force
@@ -610,10 +664,10 @@ if ($HasMarker) {
         Write-Host "Freebuff Chinese localization refreshed to patch version $PatchVersion."
     } catch {
         $failureMessage = $_.Exception.Message
-        try { Copy-Item -LiteralPath $rollbackIndex -Destination $IndexPath -Force -ErrorAction Stop } catch {}
-        try { Copy-Item -LiteralPath $rollbackAsset -Destination $InstalledPatchAsset -Force -ErrorAction Stop } catch {}
-        try { Copy-Item -LiteralPath $rollbackAsar -Destination $AppAsarPath -Force -ErrorAction Stop } catch {}
-        throw "Chinese patch refresh failed and the previous files were restored when possible. Reason: $failureMessage"
+        if (-not (Restore-VerifiedFile -Source $rollbackIndex -Destination $IndexPath -ExpectedHash $CurrentIndexHash)) { $refreshRollbackSucceeded = $false }
+        if (-not (Restore-VerifiedFile -Source $rollbackAsset -Destination $InstalledPatchAsset -ExpectedHash $InstalledPatchHash)) { $refreshRollbackSucceeded = $false }
+        if (-not (Restore-VerifiedFile -Source $rollbackAsar -Destination $AppAsarPath -ExpectedHash $CurrentAppAsarHash)) { $refreshRollbackSucceeded = $false }
+        throw "Chinese patch refresh failed. Rollback verified: $refreshRollbackSucceeded. If incomplete, recovery copies remain beside the app files. Reason: $failureMessage"
     } finally {
         if (Test-Path -LiteralPath $assetTemp -PathType Leaf) {
             Remove-Item -LiteralPath $assetTemp -Force -ErrorAction SilentlyContinue
@@ -621,7 +675,9 @@ if ($HasMarker) {
         if (Test-Path -LiteralPath $indexTemp -PathType Leaf) {
             Remove-Item -LiteralPath $indexTemp -Force -ErrorAction SilentlyContinue
         }
-        foreach ($temporaryPath in @($asarTemp, $rollbackIndex, $rollbackAsset, $rollbackAsar)) {
+        $refreshCleanupPaths = @($asarTemp)
+        if ($refreshRollbackSucceeded) { $refreshCleanupPaths += @($rollbackIndex, $rollbackAsset, $rollbackAsar) }
+        foreach ($temporaryPath in $refreshCleanupPaths) {
             if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
                 Remove-Item -LiteralPath $temporaryPath -Force -ErrorAction SilentlyContinue
             }
@@ -672,6 +728,7 @@ $BackupAppAsarPath = Join-Path $BackupDir 'app.asar'
 $OriginalPatchAssetExisted = Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf
 $OriginalIndexHash = Get-Sha256 -Path $IndexPath
 $OriginalAppAsarHash = Get-Sha256 -Path $AppAsarPath
+$OriginalPatchAssetHash = Get-Sha256 -Path $InstalledPatchAsset
 
 try {
     New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
@@ -763,25 +820,14 @@ try {
     Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Action Restore"
 } catch {
     $failureMessage = $_.Exception.Message
-    try {
-        if ((Get-Sha256 -Path $IndexPath) -ne $OriginalIndexHash) {
-            Copy-Item -LiteralPath $BackupIndexPath -Destination $IndexPath -Force -ErrorAction Stop
-        }
-    } catch {}
-    try {
-        if ((Get-Sha256 -Path $AppAsarPath) -ne $OriginalAppAsarHash) {
-            Copy-Item -LiteralPath $BackupAppAsarPath -Destination $AppAsarPath -Force -ErrorAction Stop
-        }
-    } catch {}
-    try {
-        if ($OriginalPatchAssetExisted) {
-            Copy-Item -LiteralPath $BackupPatchAssetPath -Destination $InstalledPatchAsset -Force -ErrorAction Stop
-        } elseif (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf) {
-            Remove-Item -LiteralPath $InstalledPatchAsset -Force -ErrorAction Stop
-        }
-    } catch {}
-    Remove-NewInstallArtifacts -BackupDir $BackupDir -BackupRoot $BackupRoot -BackupFiles @($BackupIndexPath, $BackupPatchAssetPath, $BackupAppAsarPath) -HistoryPath $PreviousManifestPath -HistoryRoot $historyDir
-    throw "Chinese patch installation failed and the original files were restored when possible. Reason: $failureMessage"
+    $installRollbackSucceeded = $true
+    if (-not (Restore-VerifiedFile -Source $BackupIndexPath -Destination $IndexPath -ExpectedHash $OriginalIndexHash)) { $installRollbackSucceeded = $false }
+    if (-not (Restore-VerifiedFile -Source $BackupAppAsarPath -Destination $AppAsarPath -ExpectedHash $OriginalAppAsarHash)) { $installRollbackSucceeded = $false }
+    if (-not (Restore-VerifiedFile -Source $BackupPatchAssetPath -Destination $InstalledPatchAsset -ExpectedHash $OriginalPatchAssetHash -OriginallyExisted $OriginalPatchAssetExisted)) { $installRollbackSucceeded = $false }
+    if ($installRollbackSucceeded) {
+        Remove-NewInstallArtifacts -BackupDir $BackupDir -BackupRoot $BackupRoot -BackupFiles @($BackupIndexPath, $BackupPatchAssetPath, $BackupAppAsarPath) -HistoryPath $PreviousManifestPath -HistoryRoot $historyDir
+    }
+    throw "Chinese patch installation failed. Rollback verified: $installRollbackSucceeded. If incomplete, original backups remain at: $BackupDir. Reason: $failureMessage"
 } finally {
     if (Test-Path -LiteralPath $tempIndex -PathType Leaf) {
         Remove-Item -LiteralPath $tempIndex -Force -ErrorAction SilentlyContinue

@@ -6,7 +6,7 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.5.0'
+  const PATCH_VERSION = '0.5.3'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
@@ -1104,8 +1104,14 @@
   }
 
   const translatedAttributes = ['aria-label', 'aria-valuetext', 'data-tooltip', 'placeholder', 'title']
-  const ignoredParents = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA'])
   const ignoredContentSelector = [
+    'script',
+    'style',
+    'code',
+    'pre',
+    'textarea',
+    '[data-freebuff-zh-ignore]',
+    '[contenteditable]:not([contenteditable="false"])',
     '.bubble',
     '.prose',
     '.fold-reasoning-text',
@@ -1120,14 +1126,11 @@
     '.note-text',
     '.qnote',
   ].join(',')
-  const interactiveSelector =
-    'button,a,[role="button"],[role="menuitem"],[role="menuitemradio"],[role="tab"],[role="checkbox"],[role="switch"],input,select'
   const stats = { text: 0, attributes: 0, contextual: 0, passes: 0 }
 
   function shouldIgnoreContent(element) {
-    const ignored = element.closest?.(ignoredContentSelector)
-    if (!ignored) return false
-    return !element.closest?.(interactiveSelector)
+    // Links and buttons inside user content are still user content.
+    return Boolean(element?.closest?.(ignoredContentSelector))
   }
 
   function translateValue(value) {
@@ -1146,24 +1149,46 @@
 
   function translateTextNode(node) {
     const parent = node.parentElement
-    if (
-      !parent ||
-      ignoredParents.has(parent.tagName) ||
-      parent.closest('[data-freebuff-zh-ignore]') ||
-      shouldIgnoreContent(parent)
-    )
-      return
+    if (!parent || shouldIgnoreContent(parent)) return
     const before = node.nodeValue
-    const after = translateValue(before)
+    const after = translateUiLabel(before, parent) ?? translateValue(before)
     if (after !== before) {
       node.nodeValue = after
       stats.text += 1
     }
   }
 
+  // These words can also be filenames, commands or user text. Translate only
+  // the dedicated app-owned label, never the adjoining .act-arg/output.
+  const toolNameLabels = { Search: '搜索', Read: '读取', Run: '运行' }
+  const toolStatusLabels = { success: '成功', failure: '失败', running: '运行中' }
+
+  function translateUiLabel(value, element) {
+    const key = value.trim()
+    let translated
+    const isToolHeader =
+      element.parentElement?.matches?.('.tool-row-head') &&
+      element.parentElement.parentElement?.matches?.('.tool-row')
+    if (isToolHeader && element.matches?.('.act-name') && Object.hasOwn(toolNameLabels, key)) {
+      translated = toolNameLabels[key]
+    } else if (isToolHeader && element.matches?.('.tool-row-status') && Object.hasOwn(toolStatusLabels, key.toLowerCase())) {
+      translated = toolStatusLabels[key.toLowerCase()]
+    } else if (element.tagName === 'BUTTON' && element.matches?.('.quote-btn') && key === 'Quote') {
+      translated = '引用'
+    }
+    return translated === undefined ? null : value.replace(key, translated)
+  }
+
   function translateAttributes(element) {
-    if (shouldIgnoreContent(element)) return
+    // A composer's placeholder describes the UI, not the user's draft. Keep
+    // text/value protection and all enclosing ignored regions in force.
+    const isUiTextarea =
+      element.tagName === 'TEXTAREA' &&
+      !element.hasAttribute('data-freebuff-zh-ignore') &&
+      !shouldIgnoreContent(element.parentElement)
+    if (!isUiTextarea && shouldIgnoreContent(element)) return
     for (const name of translatedAttributes) {
+      if (isUiTextarea && name === 'aria-valuetext') continue
       if (!element.hasAttribute(name)) continue
       const before = element.getAttribute(name)
       const after = translateValue(before)
@@ -1191,18 +1216,24 @@
         : root.parentElement
     if (!scope?.querySelectorAll) return
     for (const button of contextCandidates(scope, '.acts-toggle')) {
-      for (const child of button.childNodes) {
-        if (child.nodeType !== Node.TEXT_NODE) continue
-        if (child.nodeValue.trim() === 's') {
-          child.nodeValue = ''
-          stats.contextual += 1
+      if (shouldIgnoreContent(button)) continue
+      // Freebuff 0.0.93 nests the split "step" + "s" nodes in .acts-label.
+      for (const label of [button, ...button.querySelectorAll('.acts-label')]) {
+        if (shouldIgnoreContent(label)) continue
+        for (const child of label.childNodes) {
+          if (child.nodeType !== Node.TEXT_NODE) continue
+          if (child.nodeValue.trim() === 's') {
+            child.nodeValue = ''
+            stats.contextual += 1
+          }
         }
       }
     }
     for (const heading of contextCandidates(scope, '.turn-changes-head')) {
+      if (shouldIgnoreContent(heading)) continue
       const labels = Array.from(heading.querySelectorAll('span'))
       const label = labels.find((candidate) => /^Agent changed\s+\d+\s+files?$/.test(candidate.textContent.trim()))
-      if (!label) continue
+      if (!label || shouldIgnoreContent(label)) continue
       const match = label.textContent.trim().match(/^Agent changed\s+(\d+)\s+files?$/)
       if (!match) continue
       label.textContent = `智能体修改了 ${match[1]} 个文件`
@@ -1239,7 +1270,7 @@
     translateTree(document.documentElement)
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
-        if (mutation.type === 'characterData') translateTextNode(mutation.target)
+        if (mutation.type === 'characterData') translateTree(mutation.target)
         else if (mutation.type === 'attributes') translateAttributes(mutation.target)
         else for (const node of mutation.addedNodes) translateTree(node)
       }

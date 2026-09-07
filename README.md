@@ -4,7 +4,7 @@
 
 ## 兼容性
 
-- 补丁版本：`0.5.0`
+- 补丁版本：`0.5.3`
 - 支持版本：**Windows 桌面版 Freebuff 0.0.93.0**
 - 仅适用于 Windows 桌面版；不支持网页版、macOS 或 Linux，其他 Freebuff 版本未经验证。
 
@@ -16,7 +16,7 @@
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.5.0.zip`，完整解压并关闭 Freebuff，然后运行：
+从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.5.3.zip`，完整解压并关闭 Freebuff，然后运行：
 
 - `Install-Freebuff-Zh.cmd`：一键安装或刷新。
 - `Restore-Freebuff-Zh.cmd`：一键还原安装前的官方文件。

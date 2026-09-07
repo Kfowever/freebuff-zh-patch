@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Translation DOM regression tests</title>
+<body>
+<main id="fixtures">
+  <div class="bubble"><a id="chat-link" href="#" title="Plan">Plan</a><button id="chat-button">Plan</button></div>
+  <pre><code><span id="code" title="Plan">Plan</span></code></pre>
+  <div data-freebuff-zh-ignore><span id="ignored" title="Plan">Plan</span></div>
+  <div contenteditable="true"><span id="editable" title="Plan">Plan</span></div>
+  <div class="note-text"><a id="note" title="Plan">Plan</a></div>
+  <div class="bubble"><button class="acts-toggle" id="ignored-context">s</button></div>
+  <div data-freebuff-zh-ignore class="turn-changes-head"><span id="ignored-heading">Agent changed 2 files</span></div>
+  <button id="normal" title="Plan">Plan</button>
+  <button class="acts-toggle" id="normal-context">s</button>
+  <div class="turn-changes-head"><span id="normal-heading">Agent changed 2 files</span></div>
+  <div class="bubble" id="dynamic-protected"></div>
+  <div id="dynamic-normal"></div>
+  <div class="composer-box"><textarea id="composer" placeholder="Type a message — / for skills, @ for files" aria-label="Plan" aria-valuetext="Plan">Plan</textarea></div>
+  <div class="bubble"><textarea id="protected-composer" placeholder="Type a message — / for skills, @ for files">Plan</textarea></div>
+  <button class="acts-toggle"><span class="acts-label" id="nested-label"></span></button>
+  <div class="act tool-row"><button class="tool-row-head"><span class="act-name" id="tool-label">Search</span><span class="act-arg" id="tool-arg">Read Run Search ^Quote$ /Read.php</span><span class="tool-row-status" id="tool-status">success</span></button></div>
+  <button class="quote-btn" id="quote-label">Quote</button>
+</main>
+<pre id="result" data-freebuff-zh-ignore>RUNNING</pre>
+<script>
+for (const value of ['Worked · ', '2', ' step', 's']) {
+  document.getElementById('nested-label').append(document.createTextNode(value));
+}
+</script>
+<script src="../freebuff-zh-cn.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  let count = 0;
+  const check = (actual, expected, label) => {
+    if (actual !== expected) throw new Error(`${label}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+    count++;
+  };
+  const byId = id => document.getElementById(id);
+  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+  try {
+    check(byId('tool-label').textContent, '搜索', 'tool name');
+    check(byId('tool-status').textContent, '成功', 'tool status');
+    check(byId('tool-arg').textContent, 'Read Run Search ^Quote$ /Read.php', 'tool arguments');
+    check(byId('quote-label').textContent, '引用', 'quote action');
+    check(byId('composer').placeholder, '输入消息 — / 选择技能，@ 引用文件', 'composer placeholder');
+    check(byId('composer').getAttribute('aria-label'), '计划', 'composer accessible name');
+    check(byId('composer').getAttribute('aria-valuetext'), 'Plan', 'composer accessible value');
+    check(byId('composer').value, 'Plan', 'composer draft value');
+    check(byId('composer').textContent, 'Plan', 'composer default draft');
+    check(byId('protected-composer').placeholder, 'Type a message — / for skills, @ for files', 'protected textarea');
+    check(byId('nested-label').textContent, '已执行 · 2 步', 'nested execution label');
+    byId('nested-label').lastChild.nodeValue = 's';
+    byId('composer').placeholder = 'Type a message — added to the queue';
+    await tick();
+    check(byId('nested-label').textContent, '已执行 · 2 步', 'dynamic nested suffix');
+    check(byId('composer').placeholder, '输入消息 — 将添加到队列', 'dynamic composer placeholder');
+    for (const id of ['chat-link', 'chat-button', 'code', 'ignored', 'editable', 'note']) {
+      check(byId(id).textContent, 'Plan', `${id} text`);
+      if (byId(id).hasAttribute('title')) check(byId(id).title, 'Plan', `${id} attribute`);
+    }
+    check(byId('ignored-context').textContent, 's', 'ignored contextual suffix');
+    check(byId('ignored-heading').textContent, 'Agent changed 2 files', 'ignored contextual heading');
+    check(byId('normal').textContent, '计划', 'ordinary UI text');
+    check(byId('normal').title, '计划', 'ordinary UI attribute');
+    check(byId('normal-context').textContent, '', 'ordinary contextual suffix');
+    check(byId('normal-heading').textContent, '智能体修改了 2 个文件', 'ordinary contextual heading');
+    for (const id of ['dynamic-protected', 'dynamic-normal']) {
+      const link = document.createElement('a');
+      link.title = 'Plan';
+      link.textContent = 'Plan';
+      byId(id).append(link);
+    }
+    await tick();
+    for (const [id, expected] of [['dynamic-protected', 'Plan'], ['dynamic-normal', '计划']]) {
+      const link = byId(id).firstChild;
+      check(link.textContent, expected, `${id} added node`);
+      check(link.title, expected, `${id} added attribute`);
+      link.firstChild.nodeValue = 'Plan';
+      link.title = 'Plan';
+    }
+    await tick();
+    for (const [id, expected] of [['dynamic-protected', 'Plan'], ['dynamic-normal', '计划']]) {
+      check(byId(id).firstChild.textContent, expected, `${id} character mutation`);
+      check(byId(id).firstChild.title, expected, `${id} attribute mutation`);
+    }
+    byId('result').textContent = `PASS: ${count} DOM assertions`;
+    document.title = 'PASS: DOM regression tests';
+  } catch (error) {
+    byId('result').textContent = `FAIL: ${error.stack}`;
+    document.title = 'FAIL: DOM regression tests';
+  }
+});
+</script>
+</body>
+</html>
