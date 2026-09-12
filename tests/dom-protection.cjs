@@ -96,6 +96,8 @@ function runScenario(name, container, tag = 'a', expected = 'Plan') {
 
 runScenario('chat link', element('div', null, { class: 'bubble' }))
 runScenario('chat button', element('div', null, { class: 'bubble' }), 'button')
+runScenario('sticky user summary', element('div', null, { class: 'user-sticky-bubble' }), 'span')
+runScenario('user message text', element('div', null, { class: 'user-message-text' }), 'span')
 runScenario('highlighted code', element('code'), 'span')
 runScenario('nested preformatted text', element('pre'), 'span')
 runScenario('explicit ignore', element('div', null, { 'data-freebuff-zh-ignore': '' }), 'span')
@@ -185,5 +187,69 @@ for (const protectedContent of [false, true]) {
     onMutation([{ type: 'characterData', target: status.childNodes[0] }])
     equal(status.textContent, protectedContent ? before : after, `dynamic ${before} status`)
   }
+}
+for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong-wrapper', 'user-text']) {
+  const root = element('main', null, protection === 'outer-bubble' ? { class: 'bubble' } : {})
+  const bubble = element('div', root, { class: 'bubble user-message-bubble',
+    ...(protection === 'explicit' ? { 'data-freebuff-zh-ignore': '' } : {}),
+    ...(protection === 'editable' ? { contenteditable: 'true' } : {}) })
+  root.childNodes.push(bubble)
+  const body = element('div', bubble, { class: 'user-message-text' })
+  body.textContent = 'Show more'
+  const disclosure = element('div', bubble, { class: protection === 'wrong-wrapper' ? 'unrelated' : 'user-message-disclosure' })
+  bubble.childNodes.push(body, disclosure)
+  const button = element('button', disclosure, { class: 'user-message-toggle' })
+  disclosure.childNodes.push(button)
+  const label = element('span', button, protection === 'user-text' ? { class: 'user-message-text' } : {})
+  label.textContent = 'Show more'
+  button.childNodes.push(label)
+  const { onMutation } = boot(root)
+  equal(body.textContent, 'Show more', `${protection}: user message unchanged`)
+  equal(label.textContent, protection === 'none' ? '展开更多' : 'Show more', `${protection}: disclosure`)
+  label.childNodes[0].nodeValue = 'Show less'
+  onMutation([{ type: 'characterData', target: label.childNodes[0] }])
+  equal(label.textContent, protection === 'none' ? '收起' : 'Show less', `${protection}: dynamic disclosure`)
+}
+{
+  const root = element('main')
+  const composer = element('textarea', root, { role: 'combobox', 'aria-label': 'Message', placeholder: 'Type a message — / for skills, @ for threads or files' })
+  composer.value = '@Auth redesign Show more'
+  root.childNodes.push(composer)
+  boot(root)
+  equal(composer.getAttribute('placeholder'), '输入消息 — / 选择技能，@ 引用任务或文件', '0.0.109 composer hint')
+  equal(composer.getAttribute('aria-label'), '消息', '0.0.109 composer accessible name')
+  equal(composer.value, '@Auth redesign Show more', '0.0.109 draft and mention unchanged')
+}
+{
+  const root = element('main')
+  const heading = element('div', root, { class: 'byok-saved-heading' })
+  const name = element('strong', heading, { title: 'Connect a provider' })
+  name.textContent = 'Connect a provider'
+  heading.childNodes.push(name)
+  const option = element('button', root, { class: 'agent-provider-option' })
+  const title = element('span', option, { class: 'agent-option-title' })
+  title.textContent = 'Done'
+  const badge = element('span', title, { class: 'model-badge byo' })
+  badge.textContent = 'Your API key'
+  title.childNodes.push(badge)
+  option.childNodes.push(title)
+  const keyInput = element('input', root, { type: 'password', placeholder: 'Paste your API key', 'aria-label': 'Provider API key' })
+  keyInput.value = 'synthetic-test-key-DoNotTranslate'
+  const endpoint = element('input', root, { type: 'url', 'aria-label': 'Provider base URL' })
+  endpoint.value = 'https://provider.example/v1'
+  root.childNodes.push(heading, option, keyInput, endpoint)
+  const { onMutation } = boot(root)
+  equal(name.textContent, 'Connect a provider', 'saved provider name unchanged')
+  equal(name.getAttribute('title'), 'Connect a provider', 'saved provider title unchanged')
+  equal(title.childNodes[0].nodeValue, 'Done', 'picker connection name unchanged')
+  equal(badge.textContent, '你的 API 密钥', 'provider UI badge translated')
+  equal(keyInput.getAttribute('placeholder'), '粘贴你的 API 密钥', 'key input placeholder translated')
+  equal(keyInput.value, 'synthetic-test-key-DoNotTranslate', 'key input value unchanged')
+  equal(endpoint.value, 'https://provider.example/v1', 'provider URL value unchanged')
+  name.childNodes[0].nodeValue = 'Your API providers'
+  title.childNodes[0].nodeValue = 'Connect a provider'
+  onMutation([{type: 'characterData', target: name.childNodes[0]}, {type: 'characterData', target: title.childNodes[0]}])
+  equal(name.textContent, 'Your API providers', 'dynamic saved provider name unchanged')
+  equal(title.childNodes[0].nodeValue, 'Connect a provider', 'dynamic picker name unchanged')
 }
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)

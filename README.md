@@ -6,8 +6,8 @@
 
 ## 兼容性
 
-- 补丁版本：`0.5.3`
-- 支持版本：**Windows 桌面版 Freebuff 0.0.93.0**
+- 补丁版本：`0.6.1`
+- 支持版本：**Windows 桌面版 Freebuff 0.0.109.0**
 - 仅适用于 Windows 桌面版；不支持网页版、macOS 或 Linux，其他 Freebuff 版本未经验证。
 
 ## 0.5.0 更新
@@ -18,7 +18,7 @@
 
 ## 下载与安装
 
-从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.5.3.zip`，完整解压并关闭 Freebuff，然后运行：
+从 [GitHub Releases](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) 下载 `Freebuff-Zh-Patch-0.6.1.zip`，完整解压并关闭 Freebuff，然后运行：
 
 - `Install-Freebuff-Zh.cmd`：一键安装或刷新。
 - `Restore-Freebuff-Zh.cmd`：一键还原安装前的官方文件。
@@ -33,7 +33,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\FreebuffZhPatch.ps1" -Act
 
 ## 强制安装
 
-Freebuff 版本与 `0.0.93.0` 不一致时，一键安装会直接显示兼容性警告。只有再次输入单独的 `y` 或 `Y` 才会继续；其他输入、空输入和非交互输入都会取消并返回退出码 `3`。
+Freebuff 版本与 `0.0.109.0` 不一致时，一键安装会直接显示兼容性警告。只有再次输入单独的 `y` 或 `Y` 才会继续；其他输入、空输入和非交互输入都会取消并返回退出码 `3`。
 
 旧调用中的 `-Force` 参数仍然可用，但不能跳过上述确认。强制安装只绕过版本号限制，不能绕过文件缺失、未知 ASAR 布局、残留的跨版本补丁、进程占用、备份或哈希检查。使用不兼容版本可能造成中文缺失、错位、乱码、界面异常或启动失败。
 
