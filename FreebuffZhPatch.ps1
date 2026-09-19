@@ -13,8 +13,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$PatchVersion = '0.6.1'
-$TestedAppVersion = '0.0.109.0'
+$PatchVersion = '0.7.0'
+$TestedAppVersion = '0.0.126.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
