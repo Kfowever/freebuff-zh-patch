@@ -13,8 +13,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$PatchVersion = '0.7.0'
-$TestedAppVersion = '0.0.126.0'
+$PatchVersion = '0.8.2'
+$TestedAppVersion = '0.0.190.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
@@ -87,18 +87,19 @@ function Get-MainAssetInfo {
     )
     $match = [regex]::Match(
         $IndexText,
-        '<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="\./assets/([^"?]+\.js)(?:\?[^\"]*)?")[^>]*>'
+        '<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="(?<prefix>\./|/)assets/(?<name>[A-Za-z0-9][A-Za-z0-9._-]*\.js)(?:\?[^"<>]*)?")[^>]*>'
     )
     if (-not $match.Success) {
         throw 'Could not find the Freebuff main UI JavaScript in index.html. The app structure may have changed.'
     }
-    $name = $match.Groups[1].Value
+    $name = $match.Groups['name'].Value
     $path = Join-Path (Join-Path $UiDir 'assets') $name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "The main UI asset referenced by index.html does not exist: $path"
     }
     return [PSCustomObject]@{
         Name = $name
+        PatchUrl = $match.Groups['prefix'].Value + 'assets/' + $PatchAssetName
         Path = $path
         Hash = Get-Sha256 -Path $path
     }
@@ -754,7 +755,7 @@ try {
 
 $injection = @"
     $PatchMarkerStart
-    <script src="./assets/$PatchAssetName" data-freebuff-zh-patch="$PatchVersion"></script>
+    <script src="$($MainAsset.PatchUrl)" data-freebuff-zh-patch="$PatchVersion"></script>
     $PatchMarkerEnd
 "@
 

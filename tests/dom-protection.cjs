@@ -12,6 +12,7 @@ function element(tagName = 'div', parentElement = null, attributes = {}) {
     nodeType: 1, tagName: tagName.toUpperCase(), parentElement, attributes, childNodes: [],
     matches(selector) {
       return selector.split(',').some(part => {
+        part = part.trim()
         if (part.startsWith('.')) return (this.attributes.class ?? '').split(' ').includes(part.slice(1))
         if (part === '[data-freebuff-zh-ignore]') return this.hasAttribute('data-freebuff-zh-ignore')
         if (part === '[contenteditable]:not([contenteditable="false"])') {
@@ -98,6 +99,121 @@ runScenario('chat link', element('div', null, { class: 'bubble' }))
 runScenario('chat button', element('div', null, { class: 'bubble' }), 'button')
 runScenario('sticky user summary', element('div', null, { class: 'user-sticky-bubble' }), 'span')
 runScenario('user message text', element('div', null, { class: 'user-message-text' }), 'span')
+
+// 0.8.1: actual contenteditable composer metadata is UI; its children are draft.
+{
+  const root = element('main')
+  const composer = element('div', root, {
+    class: 'composer-input', contenteditable: 'true', 'data-composer-input': '',
+    'data-placeholder': 'Type a message — / for commands, @ for threads or files',
+    'aria-placeholder': 'Type a message — / for commands, @ for threads or files',
+    'aria-label': 'Message', 'aria-valuetext': 'Plan', title: 'Plan',
+  })
+  composer.textContent = 'New chat'
+  root.childNodes.push(composer)
+  const { onMutation } = boot(root)
+  equal(composer.textContent, 'New chat', 'contenteditable draft is unchanged')
+  for (const name of ['data-placeholder', 'aria-placeholder']) {
+    equal(composer.getAttribute(name), '输入消息 — 输入 / 使用命令，输入 @ 搜索任务或文件', `${name} UI metadata`)
+    composer.setAttribute(name, 'Type a message — added to the queue')
+    onMutation([{ type: 'attributes', attributeName: name, target: composer }])
+    equal(composer.getAttribute(name), '输入消息 — 将添加到队列', `${name} mutation`)
+  }
+  equal(composer.getAttribute('aria-label'), '消息', 'composer accessible name')
+  equal(composer.getAttribute('aria-valuetext'), 'Plan', 'composer accessible draft value')
+  equal(composer.getAttribute('title'), 'Plan', 'composer non-UI attributes')
+  equal(composer.textContent, 'New chat', 'metadata mutations preserve draft')
+}
+for (const attributes of [{ class: 'bubble' }, { 'data-freebuff-zh-ignore': '' }]) {
+  const root = element('div', null, attributes)
+  const composer = element('div', root, {
+    class: 'composer-input', contenteditable: 'true', 'data-composer-input': '',
+    'data-placeholder': 'Type a message — / for commands, @ for threads or files',
+  })
+  composer.textContent = 'New chat'
+  root.childNodes.push(composer)
+  boot(root)
+  equal(composer.getAttribute('data-placeholder'), 'Type a message — / for commands, @ for threads or files', 'nested composer metadata is protected')
+  equal(composer.textContent, 'New chat', 'nested composer text is protected')
+}
+{
+  function titleScenario(wrapper, className, expected, outer = element('main')) {
+    wrapper.parentElement = outer
+    outer.childNodes.push(wrapper)
+    const title = element('span', wrapper, { class: className })
+    title.textContent = 'New chat'
+    wrapper.childNodes.push(title)
+    const { onMutation } = boot(outer)
+    equal(title.textContent, expected, `${className} contextual default`)
+    title.childNodes[0].nodeValue = 'Plan'
+    onMutation([{ type: 'characterData', target: title.childNodes[0] }])
+    equal(title.textContent, 'Plan', `${className} custom rename`)
+  }
+  titleScenario(element('button', null, { class: 'tab-select', 'aria-controls': 'thread-workspace' }), 'tab-title', '新建聊天')
+  titleScenario(element('button', null, { class: 'tab-select', 'aria-controls': 'file-workspace' }), 'tab-title', 'New chat')
+  titleScenario(element('div', null, { class: 'sidebar-thread' }), 'sidebar-thread-title', '新建聊天')
+  titleScenario(element('div', null, { class: 'sidebar-thread' }), 'sidebar-thread-title', 'New chat', element('div', null, { class: 'bubble' }))
+}
+for (const [tooltip, expected] of [['Chat only', '仅聊天'], ['D:\\projects\\Chat only', 'Chat only']]) {
+  const root = element('main')
+  const picker = element('button', root, { class: 'new-thread-project-trigger', 'data-tooltip': tooltip })
+  const name = element('span', picker, { class: 'repo-name' })
+  const leaf = element('span', name, { class: 'repo-name-repo' })
+  leaf.textContent = 'Chat only'
+  root.childNodes.push(picker); picker.childNodes.push(name); name.childNodes.push(leaf)
+  boot(root)
+  equal(leaf.textContent, expected, 'projectless label versus a custom project name')
+}
+{
+  const root = element('main')
+  const hint = element('p', root, { class: 'workspace-settings-hint' })
+  const parts = ['No sessions charged in the last ', '7', ' days.'].map(nodeValue => ({ nodeType: 3, parentElement: hint, nodeValue }))
+  hint.childNodes.push(...parts); root.childNodes.push(hint)
+  const { onMutation } = boot(root)
+  equal(hint.textContent, '最近 7 天内没有计费会话。', 'split usage empty state')
+  equal(hint.childNodes[1], parts[1], 'split usage count node identity')
+  parts[1].nodeValue = '14'
+  onMutation([{ type: 'characterData', target: parts[1] }])
+  equal(hint.textContent, '最近 14 天内没有计费会话。', 'split usage count update')
+}
+
+// Actual 0.0.190 surfaces can contain strings that coincide with UI labels.
+// Verify both first render and observer updates preserve those user values.
+for (const name of [
+  'sidebar-thread-title', 'threads-row-title-text', 'sidebar-project-name',
+  'tab-title', 'search-result-title', 'mcp-server-name', 'agent-option-name',
+  'reasoning-preview', 'todo-dock-text', 'question-text',
+  'question-option-body', 'qtitle', 'file-code-editor',
+  'file-markdown-content', 'diff-view-body', 'attachment-chip-name',
+]) runScenario(`0.0.190 ${name}`, element('div', null, { class: name }), 'span')
+runScenario('file tree name', element('button', null, { class: 'file-row file' }), 'span')
+runScenario('file creation controls', element('form', null, { class: 'file-row file-create-row' }), 'span', '计划')
+
+{
+  const root = element('main')
+  const terminal = element('div', root, { class: 'terminal-tab' })
+  const label = element('span', terminal, { class: 'explorer-tab-label', title: 'Plan' })
+  label.textContent = 'Plan'
+  root.childNodes.push(terminal)
+  terminal.childNodes.push(label)
+  const { onMutation } = boot(root)
+  equal(label.textContent, 'Plan', 'user terminal title')
+  label.childNodes[0].nodeValue = 'Hours'
+  onMutation([{ type: 'characterData', target: label.childNodes[0] }])
+  equal(label.textContent, 'Hours', 'dynamic user terminal title')
+  equal(label.getAttribute('title'), 'Plan', 'terminal title attribute')
+}
+
+{
+  const root = element('article', null, { class: 'byok-saved byok-chatgpt' })
+  const heading = element('div', root, { class: 'byok-saved-heading' })
+  const title = element('strong', heading)
+  title.textContent = 'Codex sign-in'
+  root.childNodes.push(heading)
+  heading.childNodes.push(title)
+  boot(root)
+  equal(title.textContent, 'Codex 登录', 'built-in sign-in heading is app UI')
+}
 runScenario('highlighted code', element('code'), 'span')
 runScenario('nested preformatted text', element('pre'), 'span')
 runScenario('explicit ignore', element('div', null, { 'data-freebuff-zh-ignore': '' }), 'span')
@@ -251,5 +367,32 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   onMutation([{type: 'characterData', target: name.childNodes[0]}, {type: 'characterData', target: title.childNodes[0]}])
   equal(name.textContent, 'Your API providers', 'dynamic saved provider name unchanged')
   equal(title.childNodes[0].nodeValue, 'Connect a provider', 'dynamic picker name unchanged')
+}
+{
+  const guide = 'Balances now read in hours instead of Freebucks: 1 hour = 5 Freebucks, an hour on MiMo v2.6 Flash Slow. Nothing was taken from your balance, and a 3x model uses 3 hours per session hour.'
+  const guideZh = '余额现在以小时而非 Freebucks 显示：每 1 小时 = 5 Freebucks；在 MiMo v2.6 Flash Slow 上运行 1 小时。余额没有被扣除，而 3 倍耗用模型每运行 1 小时会消耗 3 小时额度。'
+  const en = `5 hours left of today's 5. Daily hours refill each day and don't carry over. ${guide}`
+  const zh = `今日 5 小时额度中剩余 5 小时。每日小时额度每天补充，不会结转。${guideZh}`
+  const root = element('main')
+  const balance = element('div', root, { class: 'sidebar-new-chat sidebar-balance', 'data-tooltip': en })
+  const chat = element('div', root, { class: 'bubble', 'data-tooltip': en })
+  chat.textContent = en
+  root.childNodes.push(balance, chat)
+  const { onMutation } = boot(root)
+  equal(balance.getAttribute('data-tooltip'), zh, 'full balance tooltip attribute')
+  equal(chat.textContent, en, 'balance words in chat remain user content')
+  equal(chat.getAttribute('data-tooltip'), en, 'chat tooltip remains user content')
+  const portal = element('div', root, { class: 'tooltip' })
+  portal.textContent = en
+  root.childNodes.push(portal)
+  onMutation([{ type: 'childList', addedNodes: [portal] }])
+  equal(portal.textContent, zh, 'balance tooltip portal added on hover')
+  const refreshedEn = `1 hour left of today's 5. Daily hours refill each day and don't carry over. Last known balance; refreshing. ${guide}`
+  const refreshedZh = `今日 5 小时额度中剩余 1 小时。每日小时额度每天补充，不会结转。当前为上次确认的余额，正在刷新。${guideZh}`
+  balance.setAttribute('data-tooltip', refreshedEn)
+  portal.childNodes[0].nodeValue = refreshedEn
+  onMutation([{ type: 'attributes', target: balance }, { type: 'characterData', target: portal.childNodes[0] }])
+  equal(balance.getAttribute('data-tooltip'), refreshedZh, 'stale balance attribute mutation')
+  equal(portal.textContent, refreshedZh, 'visible stale balance text mutation')
 }
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)

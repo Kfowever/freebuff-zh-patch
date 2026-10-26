@@ -35,7 +35,7 @@ function Assert-True([bool]$Value, [string]$Message) {
     $script:Assertions++
 }
 
-function New-Fixture([string]$Name) {
+function New-Fixture([string]$Name, [string]$EntryUrl = './assets/main.js') {
     $root = Join-Path $TestRoot $Name
     $app = Join-Path $root 'app'
     $state = Join-Path $root 'state'
@@ -45,7 +45,7 @@ function New-Fixture([string]$Name) {
     $index = Join-Path $ui 'index.html'
     $asar = Join-Path $app 'resources\app.asar'
     $main = Join-Path $ui 'assets\main.js'
-    [IO.File]::WriteAllText($index, "<html lang=`"en`">`n<script type=`"module`" src=`"./assets/main.js`"></script>`n</html>", $Utf8)
+    [IO.File]::WriteAllText($index, "<html lang=`"en`">`n<script type=`"module`" src=`"$EntryUrl`"></script>`n</html>", $Utf8)
     [IO.File]::WriteAllText($asar, ('fixture Starting Freebuff orchestrator' + [char]0x2026 + ' original-tail'), $Utf8)
     [IO.File]::WriteAllText($main, '// main fixture', $Utf8)
     return [PSCustomObject]@{
@@ -142,6 +142,27 @@ Assert-True ($result.ExitCode -eq 0) "Unicode path restore: $($result.Output)"
 Assert-True ((Get-FileHash $clean.Index).Hash -eq $clean.OriginalIndex) 'restore recovers original index'
 Assert-True ((Get-FileHash $clean.Asar).Hash -eq $clean.OriginalAsar) 'restore recovers original archive'
 Assert-True (-not (Test-Path $clean.Asset)) 'restore removes translation asset'
+
+# 0.0.190 uses root-relative Vite assets; deep SPA routes must load the patch
+# from that same root. Keep support for the older relative entry layout.
+$rootEntry = New-Fixture -Name 'root-entry' -EntryUrl '/assets/main.js?v=190'
+$result = Invoke-Patch $rootEntry
+Assert-True ($result.ExitCode -eq 0) "root-relative install: $($result.Output)"
+Assert-True ([IO.File]::ReadAllText($rootEntry.Index).Contains('src="/assets/freebuff-zh-cn.js"')) 'root-relative patch URL survives deep routes'
+$result = Invoke-Patch $rootEntry -Script $upgrade
+Assert-True ($result.ExitCode -eq 0) 'root-relative refresh succeeds'
+$result = Invoke-Patch $rootEntry -Action Restore -Script $upgrade
+Assert-True ($result.ExitCode -eq 0) 'root-relative restore succeeds'
+Assert-True ((Get-FileHash $rootEntry.Index).Hash -eq $rootEntry.OriginalIndex) 'root-relative restore recovers exact index bytes'
+Assert-True ((Get-FileHash $rootEntry.Asar).Hash -eq $rootEntry.OriginalAsar) 'root-relative restore recovers exact archive bytes'
+
+foreach ($entry in @('https://example.com/assets/main.js', '//example.com/assets/main.js', '/assets/../main.js', './assets/../../main.js')) {
+    $fixture = New-Fixture -Name ('invalid-entry-' + [guid]::NewGuid().ToString('N')) -EntryUrl $entry
+    $before = Get-Snapshot $fixture
+    $result = Invoke-Patch $fixture
+    Assert-True ($result.ExitCode -ne 0) "unsafe entry rejected: $entry"
+    Assert-True ((Get-Snapshot $fixture) -eq $before) 'unsafe entry makes no changes'
+}
 
 # Every drift case must stop without replacing the trust hashes or changing files.
 foreach ($kind in @('index', 'asar', 'main', 'asset', 'backup-index', 'backup-asar', 'missing-index-backup')) {

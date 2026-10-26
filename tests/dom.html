@@ -21,6 +21,14 @@
   <button class="acts-toggle"><span class="acts-label" id="nested-label"></span></button>
   <div class="act tool-row"><button class="tool-row-head"><span class="act-name" id="tool-label">Search</span><span class="act-arg" id="tool-arg">Read Run Search ^Quote$ /Read.php</span><span class="tool-row-status" id="tool-status">success</span></button></div>
   <button class="quote-btn" id="quote-label">Quote</button>
+  <nav id="new-navigation"><button>New chat</button><button>Keyboard shortcuts</button><button>Model Providers</button></nav>
+  <div id="hours-label">Hours</div>
+  <div class="sidebar-thread-title" title="New chat" id="new-thread-name">New chat</div>
+  <div class="sidebar-project-name" title="Plan" id="new-project-name">Plan</div>
+  <div class="reasoning-preview" title="Hours" id="new-reasoning">Hours</div>
+  <div class="question-option-body" title="New chat" id="new-question-option">New chat</div>
+  <div class="file-code-editor"><span id="new-editor" title="Plan">Plan</span></div>
+  <div class="diff-view-body"><span id="new-diff" title="Hours">Hours</span></div>
 </main>
 <pre id="result" data-freebuff-zh-ignore>RUNNING</pre>
 <script>
@@ -65,6 +73,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     check(byId('normal').title, '计划', 'ordinary UI attribute');
     check(byId('normal-context').textContent, '', 'ordinary contextual suffix');
     check(byId('normal-heading').textContent, '智能体修改了 2 个文件', 'ordinary contextual heading');
+    check(byId('new-navigation').textContent, '新建聊天键盘快捷键模型服务商', '0.0.190 navigation');
+    check(byId('hours-label').textContent, '小时额度', '0.0.190 hour balance');
+    for (const [id, value] of [
+      ['new-thread-name', 'New chat'], ['new-project-name', 'Plan'],
+      ['new-reasoning', 'Hours'], ['new-question-option', 'New chat'],
+      ['new-editor', 'Plan'], ['new-diff', 'Hours'],
+    ]) {
+      check(byId(id).textContent, value, `${id} content`);
+      check(byId(id).title, value, `${id} attribute`);
+      byId(id).firstChild.nodeValue = 'Model Providers';
+      byId(id).title = 'Model Providers';
+    }
+    await tick();
+    for (const id of ['new-thread-name', 'new-project-name', 'new-reasoning', 'new-question-option', 'new-editor', 'new-diff']) {
+      check(byId(id).textContent, 'Model Providers', `${id} dynamic content`);
+      check(byId(id).title, 'Model Providers', `${id} dynamic attribute`);
+    }
     for (const id of ['dynamic-protected', 'dynamic-normal']) {
       const link = document.createElement('a');
       link.title = 'Plan';
