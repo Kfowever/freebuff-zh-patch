@@ -7,14 +7,19 @@ param(
 
     [string]$StateDir = '',
 
-    [switch]$Force
+    [switch]$Force,
+
+    [switch]$Interactive,
+
+    [switch]$CloseRunningApp
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
-$PatchVersion = '0.8.2'
-$TestedAppVersion = '0.0.190.0'
+$PatchVersion = '0.9.0'
+$TestedAppVersion = '0.0.192.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
@@ -46,7 +51,7 @@ function Assert-FileHash {
     if ([string]::IsNullOrWhiteSpace($Path) -or [string]::IsNullOrWhiteSpace($ExpectedHash) -or
         -not (Test-Path -LiteralPath $Path -PathType Leaf) -or
         (Get-Sha256 -Path $Path) -ne $ExpectedHash) {
-        throw "$Description is missing or changed. No refresh was performed; existing files and backups were preserved."
+        throw "$Description 缺失或已更改。未执行刷新；现有文件和备份均已保留。"
     }
 }
 
@@ -59,23 +64,23 @@ function Restore-VerifiedFile {
     )
     try {
         if ($OriginallyExisted) {
-            if ([string]::IsNullOrWhiteSpace($ExpectedHash)) { throw 'The recovery hash is missing.' }
+            if ([string]::IsNullOrWhiteSpace($ExpectedHash)) { throw '缺少恢复副本的哈希值。' }
             if ((Get-Sha256 -Path $Destination) -ne $ExpectedHash) {
                 if ([string]::IsNullOrWhiteSpace($Source) -or (Get-Sha256 -Path $Source) -ne $ExpectedHash) {
-                    throw 'The recovery copy is missing or has an unexpected hash.'
+                    throw '恢复副本不存在或哈希值不符合预期。已停止操作以确保安全。'
                 }
                 Copy-Item -LiteralPath $Source -Destination $Destination -Force -ErrorAction Stop
             }
-            if ((Get-Sha256 -Path $Destination) -ne $ExpectedHash) { throw 'Recovery hash verification failed.' }
+            if ((Get-Sha256 -Path $Destination) -ne $ExpectedHash) { throw '恢复副本哈希校验失败。已停止操作以确保安全。' }
         } else {
             if (Test-Path -LiteralPath $Destination -PathType Leaf) {
                 Remove-Item -LiteralPath $Destination -Force -ErrorAction Stop
             }
-            if (Test-Path -LiteralPath $Destination) { throw 'The newly installed file could not be removed.' }
+            if (Test-Path -LiteralPath $Destination) { throw '无法移除刚安装的文件。请检查文件状态；恢复副本仍会保留。' }
         }
         return $true
     } catch {
-        Write-Warning "Recovery failed for $Destination. Recovery copy: $Source. Reason: $($_.Exception.Message)"
+        Write-Warning "恢复 $Destination 失败。恢复副本：$Source。原因：$($_.Exception.Message)"
         return $false
     }
 }
@@ -90,12 +95,12 @@ function Get-MainAssetInfo {
         '<script\b(?=[^>]*\btype="module")(?=[^>]*\bsrc="(?<prefix>\./|/)assets/(?<name>[A-Za-z0-9][A-Za-z0-9._-]*\.js)(?:\?[^"<>]*)?")[^>]*>'
     )
     if (-not $match.Success) {
-        throw 'Could not find the Freebuff main UI JavaScript in index.html. The app structure may have changed.'
+        throw '在 index.html 中找不到 Freebuff 主界面脚本。应用结构可能已更改；已停止操作以避免修改错误文件。'
     }
     $name = $match.Groups['name'].Value
     $path = Join-Path (Join-Path $UiDir 'assets') $name
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-        throw "The main UI asset referenced by index.html does not exist: $path"
+        throw "index.html 引用的主界面资源不存在：$path。已停止操作以确保安全。"
     }
     return [PSCustomObject]@{
         Name = $name
@@ -107,8 +112,28 @@ function Get-MainAssetInfo {
 
 function Assert-FreebuffStopped {
     $processes = @(Get-Process -Name 'Freebuff' -ErrorAction SilentlyContinue)
+    if ($CloseRunningApp -and $processes.Count -gt 0) {
+        # Only request a normal close for the exact installation being patched.
+        # Never kill a process, discard an app confirmation, or close another copy.
+        foreach ($process in $processes) {
+            if ([string]::IsNullOrWhiteSpace($process.Path) -or
+                -not $process.Path.Equals($ExePath, [StringComparison]::OrdinalIgnoreCase)) {
+                throw '另一个位置的 Freebuff 正在运行。请先手动退出，再重新双击安装。'
+            }
+        }
+        Write-Host '正在请求 Freebuff 正常退出；如果应用弹出确认窗口，请先处理。'
+        foreach ($process in $processes) {
+            if ($process.MainWindowHandle -ne [IntPtr]::Zero) { [void]$process.CloseMainWindow() }
+        }
+        $deadline = [DateTime]::UtcNow.AddSeconds(20)
+        do {
+            $remaining = @(Get-Process -Name 'Freebuff' -ErrorAction SilentlyContinue)
+            if ($remaining.Count -eq 0) { return }
+            Start-Sleep -Milliseconds 250
+        } while ([DateTime]::UtcNow -lt $deadline)
+    }
     if ($processes.Count -gt 0) {
-        throw 'Freebuff is running. Close it completely, then run the patch command again.'
+        throw 'Freebuff 正在运行。请完全退出 Freebuff 后重试补丁命令。'
     }
 }
 
@@ -118,7 +143,7 @@ function Confirm-IncompatibleInstall {
         [Parameter(Mandatory = $true)][string]$SupportedVersion
     )
 
-    Write-Warning "Freebuff $DetectedVersion is not the version tested with this patch ($SupportedVersion)."
+    Write-Warning "当前 Freebuff 版本为 $DetectedVersion，与此补丁测试版本 $SupportedVersion 不同。"
     Write-Warning '强制安装可能造成兼容性问题、中文缺失/错位/乱码、界面行为异常，甚至启动失败。'
     Write-Warning '该确认只会跳过版本号限制，不会跳过文件、备份、哈希或回滚安全检查。'
 
@@ -215,7 +240,7 @@ function Find-BytePatternOffsets {
         [Parameter(Mandatory = $true)][byte[]]$Data,
         [Parameter(Mandatory = $true)][byte[]]$Pattern
     )
-    if ($Pattern.Length -eq 0) { throw 'The byte pattern must not be empty.' }
+    if ($Pattern.Length -eq 0) { throw '字节匹配模式不能为空。' }
     $offsets = [Collections.Generic.List[int]]::new()
     $searchFrom = 0
     $lastStart = $Data.Length - $Pattern.Length
@@ -240,7 +265,7 @@ function Get-StartupPatchInfo {
     $sourceBytes = [Text.Encoding]::UTF8.GetBytes($StartupOriginalText)
     $targetBytes = [Text.Encoding]::UTF8.GetBytes($StartupLocalizedText)
     if ($sourceBytes.Length -ne $targetBytes.Length) {
-        throw 'The startup translation must have the same UTF-8 byte length as the original text.'
+        throw '启动界面译文的 UTF-8 字节长度必须与原文相同。已停止操作以避免损坏 app.asar。'
     }
     $data = [IO.File]::ReadAllBytes($Path)
     $sourceOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $sourceBytes)
@@ -267,28 +292,62 @@ function New-PatchedStartupAsar {
     $sourceBytes = [Text.Encoding]::UTF8.GetBytes($StartupOriginalText)
     $targetBytes = [Text.Encoding]::UTF8.GetBytes($StartupLocalizedText)
     if ($sourceBytes.Length -ne $targetBytes.Length) {
-        throw 'The startup translation must have the same UTF-8 byte length as the original text.'
+        throw '启动界面译文的 UTF-8 字节长度必须与原文相同。已停止操作以避免损坏 app.asar。'
     }
     $data = [IO.File]::ReadAllBytes($Source)
     $sourceOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $sourceBytes)
     $targetOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $targetBytes)
     if (($sourceOffsets.Count -ne 1) -or ($targetOffsets.Count -ne 0)) {
-        throw "The startup text has an unexpected layout (original=$($sourceOffsets.Count), localized=$($targetOffsets.Count)). The app.asar file was not modified."
+        throw "启动文本布局与预期不符（原文=$($sourceOffsets.Count)，译文=$($targetOffsets.Count)）。未修改 app.asar；请确认应用版本及译文后重试。"
     }
     [Array]::Copy($targetBytes, 0, $data, $sourceOffsets[0], $targetBytes.Length)
     [IO.File]::WriteAllBytes($Destination, $data)
     $verification = Get-StartupPatchInfo -Path $Destination
     if ($verification.State -ne 'Patched') {
-        throw 'The temporary app.asar failed startup translation verification.'
+        throw '临时 app.asar 的启动译文校验失败。原文件未替换；请检查补丁文件后重试。'
     }
 }
 
-if ([string]::IsNullOrWhiteSpace($AppDir)) {
-    if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
-        throw 'LOCALAPPDATA is unavailable. Specify the Freebuff installation directory with -AppDir.'
+function Find-FreebuffDirectory {
+    $candidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        $candidates += Join-Path $env:LOCALAPPDATA 'Programs\@codebufffreebuff-desktop'
     }
-    $AppDir = Join-Path $env:LOCALAPPDATA 'Programs\@codebufffreebuff-desktop'
+    foreach ($root in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                         'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*',
+                         'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*')) {
+        foreach ($entry in @(Get-ItemProperty -Path $root -ErrorAction SilentlyContinue)) {
+            $name = [string](Get-PropertyValue -InputObject $entry -Name 'DisplayName')
+            if ($name -notmatch '^Freebuff(?:\s|$)') { continue }
+            $location = [string](Get-PropertyValue -InputObject $entry -Name 'InstallLocation')
+            if (-not [string]::IsNullOrWhiteSpace($location)) { $candidates += $location }
+            $icon = [string](Get-PropertyValue -InputObject $entry -Name 'DisplayIcon')
+            if ($icon -match '^"?(?<exe>.+\\Freebuff\.exe)"?(?:,\d+)?$') {
+                $candidates += Split-Path -Parent $Matches.exe
+            }
+        }
+    }
+    foreach ($candidate in ($candidates | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath (Join-Path $candidate 'Freebuff.exe') -PathType Leaf) { return $candidate }
+    }
+    if ($Interactive -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+        Write-Host '未自动找到 Freebuff，请在弹出的窗口中选择安装目录里的 Freebuff.exe。'
+        Add-Type -AssemblyName System.Windows.Forms
+        $picker = New-Object Windows.Forms.OpenFileDialog
+        try {
+            $picker.Title = '选择已安装的 Freebuff.exe（请勿选择下载的安装包）'
+            $picker.Filter = 'Freebuff 主程序 (Freebuff.exe)|Freebuff.exe'
+            $picker.CheckFileExists = $true
+            if ($picker.ShowDialog() -eq [Windows.Forms.DialogResult]::OK) {
+                return Split-Path -Parent $picker.FileName
+            }
+        } finally { $picker.Dispose() }
+    }
+    throw '没有找到已安装的 Freebuff。请先安装 Freebuff 桌面版，再双击“一键汉化.cmd”；自定义位置可在弹出的窗口中选择。'
 }
+
+try {
+if ([string]::IsNullOrWhiteSpace($AppDir)) { $AppDir = Find-FreebuffDirectory }
 
 $AppDir = [IO.Path]::GetFullPath($AppDir)
 $ExePath = Join-Path $AppDir 'Freebuff.exe'
@@ -306,22 +365,22 @@ if ([string]::IsNullOrWhiteSpace($StateDir)) {
 $ManifestPath = Join-Path $StateRoot 'manifest.json'
 
 if (Test-Path -LiteralPath $ManifestPath -PathType Container) {
-    throw "The patch manifest path is a directory, not a file: $ManifestPath"
+    throw "补丁清单路径指向目录而非文件：$ManifestPath。请检查路径后重试。"
 }
 
 if (-not (Test-Path -LiteralPath $ExePath -PathType Leaf)) {
-    throw "Freebuff.exe was not found: $ExePath"
+    throw "找不到 Freebuff.exe：$ExePath。请检查安装目录后重试。"
 }
 if (-not (Test-Path -LiteralPath $IndexPath -PathType Leaf)) {
-    throw "The Freebuff UI entry point was not found: $IndexPath"
+    throw "找不到 Freebuff 界面入口文件：$IndexPath。应用结构可能已更改，已停止操作以确保安全。"
 }
 if (-not (Test-Path -LiteralPath $AppAsarPath -PathType Leaf)) {
-    throw "The Freebuff Electron archive was not found: $AppAsarPath"
+    throw "找不到 Freebuff Electron 归档文件：$AppAsarPath。请检查安装目录后重试。"
 }
 
 $CurrentVersion = Get-AppVersion -ExePath $ExePath
 if ([string]::IsNullOrWhiteSpace([string]$CurrentVersion)) {
-    throw 'Freebuff.exe does not expose a readable ProductVersion. Installation and restore are blocked because compatibility cannot be determined.'
+    throw '无法读取 Freebuff.exe 的 ProductVersion。由于无法确认兼容性，已阻止安装和还原；请检查应用文件后重试。'
 }
 $CurrentIndexText = [IO.File]::ReadAllText($IndexPath)
 $HasMarker = $CurrentIndexText.Contains($PatchMarkerStart)
@@ -332,7 +391,7 @@ if (Test-Path -LiteralPath $ManifestPath -PathType Leaf) {
     try {
         $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     } catch {
-        throw "The patch manifest is not valid JSON: $ManifestPath"
+        throw "补丁清单不是有效的 JSON 文件：$ManifestPath。请检查清单或从备份恢复后重试。"
     }
 }
 
@@ -425,48 +484,54 @@ if ($Action -eq 'Status') {
     exit 0
 }
 
-Write-Host "Detected Freebuff version: $CurrentVersion"
-Write-Host "Supported Freebuff version: $TestedAppVersion"
-Write-Host "Detected patch state: $PatchState"
+Write-Host "检测到的 Freebuff 版本：$CurrentVersion"
+Write-Host "补丁支持的 Freebuff 版本：$TestedAppVersion"
+$stateNames = @{
+    NotInstalled = '尚未安装'; InstalledCurrent = '已是最新版'; InstalledNeedsRefresh = '需要更新译文'
+    UpdatedAppNeedsInstall = 'Freebuff 已更新，需要重新汉化'; StaleManifest = '安装记录与文件不一致'
+    PartialInstallation = '补丁文件不完整'; UnmanagedInstallation = '缺少可信安装记录'
+    InstalledForOtherVersion = '检测到其他版本的旧补丁'
+}
+Write-Host "汉化状态：$($stateNames[$PatchState])"
 
 if (($Action -eq 'Install') -and ($PatchState -eq 'InstalledCurrent')) {
-    Write-Host "Freebuff Chinese patch $PatchVersion is already installed. No changes were made."
+    Write-Host "Freebuff 中文补丁 $PatchVersion 已安装。未进行任何更改。"
     exit 0
 }
 
 if (($Action -eq 'Install') -and ($PatchState -eq 'StaleManifest')) {
-    throw 'The manifest says the patch is installed, but the current files do not form a recognized clean post-update state. Installation stopped to preserve the backup chain.'
+    throw '清单显示补丁已安装，但当前文件不符合可识别的更新后状态。已停止安装以保留备份链；请检查应用文件和备份后重试。'
 }
 
 if (($Action -eq 'Install') -and (($PatchState -eq 'PartialInstallation') -or ($PatchState -eq 'UnmanagedInstallation') -or ($PatchState -eq 'InstalledForOtherVersion'))) {
-    throw "Detected an incomplete, unmanaged, or cross-version patch state: $PatchState. Installation stopped to protect existing files and backups."
+    throw "检测到补丁状态不完整、未经管理或跨版本：$PatchState。已停止安装以保护现有文件和备份；请先检查或还原后重试。"
 }
 
 Assert-FreebuffStopped
 
 if ($Action -eq 'Restore') {
     if ($PatchState -eq 'NotInstalled') {
-        Write-Host 'The Freebuff Chinese patch is not installed. No changes were made.'
+        Write-Host 'Freebuff 中文补丁尚未安装。未进行任何更改。'
         exit 0
     }
     if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
-        throw "The patch manifest was not found, so a safe restore is not possible: $ManifestPath"
+        throw "找不到补丁清单，无法安全还原：$ManifestPath。请先检查安装目录和备份。"
     }
     if (-not $manifest.Installed) {
-        throw 'Patch files are present, but the manifest says the patch is not installed. Restore stopped to avoid deleting unmanaged files.'
+        throw '检测到补丁文件，但清单显示补丁未安装。已停止还原，避免删除未受管理的文件；请检查文件和备份后重试。'
     }
     if ($CurrentVersion -ne $manifest.AppVersion) {
-        throw "Freebuff changed from version $($manifest.AppVersion) to $CurrentVersion. Restore stopped to avoid overwriting a newer app file."
+        throw "Freebuff 已从版本 $($manifest.AppVersion) 更新为 $CurrentVersion。已停止还原，避免覆盖较新的应用文件；请使用对应版本的还原方式。"
     }
     $currentIndexHash = Get-Sha256 -Path $IndexPath
     if ($currentIndexHash -ne $manifest.PatchedIndexHash) {
-        throw 'index.html changed after the patch was installed. Restore stopped to protect the current file.'
+        throw '补丁安装后 index.html 已更改。已停止还原以保护当前文件；请检查文件或从备份恢复后重试。'
     }
     if (-not (Test-Path -LiteralPath $manifest.BackupIndexPath -PathType Leaf)) {
-        throw "The original index.html backup is missing: $($manifest.BackupIndexPath)"
+        throw "找不到原始 index.html 备份：$($manifest.BackupIndexPath)。已停止还原；请检查备份目录后重试。"
     }
     if ((Get-Sha256 -Path $manifest.BackupIndexPath) -ne $manifest.OriginalIndexHash) {
-        throw 'The index.html backup hash does not match the installation manifest. Restore stopped.'
+        throw 'index.html 备份的哈希值与安装清单不符。已停止还原以避免使用错误备份；请检查备份后重试。'
     }
 
     $restoreStartupPatch = [bool](Get-PropertyValue -InputObject $manifest -Name 'StartupPatchEnabled')
@@ -475,20 +540,20 @@ if ($Action -eq 'Restore') {
     $patchedAppAsarHash = Get-PropertyValue -InputObject $manifest -Name 'PatchedAppAsarHash'
     if ($restoreStartupPatch) {
         if ($CurrentAppAsarHash -ne $patchedAppAsarHash) {
-            throw 'app.asar changed after the startup translation was installed. Restore stopped to protect the current file.'
+            throw '安装启动译文后 app.asar 已更改。已停止还原以保护当前文件；请检查文件或备份后重试。'
         }
         if ([string]::IsNullOrWhiteSpace([string]$backupAppAsarPath) -or -not (Test-Path -LiteralPath $backupAppAsarPath -PathType Leaf)) {
-            throw "The original app.asar backup is missing: $backupAppAsarPath"
+            throw "找不到原始 app.asar 备份：$backupAppAsarPath。已停止还原；请检查备份目录后重试。"
         }
         if ((Get-Sha256 -Path $backupAppAsarPath) -ne $originalAppAsarHash) {
-            throw 'The app.asar backup hash does not match the installation manifest. Restore stopped.'
+            throw 'app.asar 备份的哈希值与安装清单不符。已停止还原以避免使用错误备份；请检查备份后重试。'
         }
     }
 
     $restoreOriginalAsset = [bool](Get-PropertyValue -InputObject $manifest -Name 'OriginalPatchAssetExisted')
     $restoreAssetBackup = Get-PropertyValue -InputObject $manifest -Name 'BackupPatchAssetPath'
     if ($restoreOriginalAsset -and ([string]::IsNullOrWhiteSpace([string]$restoreAssetBackup) -or -not (Test-Path -LiteralPath $restoreAssetBackup -PathType Leaf))) {
-        throw "The original same-name asset backup is missing: $restoreAssetBackup"
+        throw "找不到同名资源的原始备份：$restoreAssetBackup。已停止还原；请检查备份目录后重试。"
     }
 
     $restoreTemp = Join-Path $UiDir ('.freebuff-zh-restore-' + [guid]::NewGuid().ToString('N') + '.tmp')
@@ -525,7 +590,7 @@ if ($Action -eq 'Restore') {
             $manifest | Add-Member -NotePropertyName 'RestoredAppAsarHash' -NotePropertyValue (Get-Sha256 -Path $AppAsarPath) -Force
         }
         Write-JsonFile -Value $manifest -Path $ManifestPath
-        Write-Host "The Freebuff Chinese patch was restored. The original backup remains at: $($manifest.BackupDir)"
+        Write-Host "Freebuff 中文补丁已还原。原始备份仍保存在：$($manifest.BackupDir)"
     } catch {
         $failureMessage = $_.Exception.Message
         if (-not (Restore-VerifiedFile -Source $restoreRollbackIndex -Destination $IndexPath -ExpectedHash $CurrentIndexHash)) {
@@ -539,7 +604,7 @@ if ($Action -eq 'Restore') {
         if (-not (Restore-VerifiedFile -Source $restoreRollbackAsset -Destination $InstalledPatchAsset -ExpectedHash $InstalledPatchHash -OriginallyExisted $restorePatchedAssetExisted)) {
             $restoreRollbackSucceeded = $false
         }
-        throw "Chinese patch restore failed. Rollback verified: $restoreRollbackSucceeded. If incomplete, recovery copies remain beside the app files. Reason: $failureMessage"
+        throw "中文补丁还原失败。回滚校验结果：$restoreRollbackSucceeded。如回滚未完成，恢复副本仍保留在应用文件旁。原因：$failureMessage。请检查恢复副本后重试。"
     } finally {
         $restoreCleanupPaths = @($restoreTemp, $restoreAsarTemp)
         if ($restoreRollbackSucceeded) { $restoreCleanupPaths += @($restoreRollbackIndex, $restoreRollbackAsar, $restoreRollbackAsset) }
@@ -553,74 +618,74 @@ if ($Action -eq 'Restore') {
 }
 
 if (-not (Test-Path -LiteralPath $SourcePatchAsset -PathType Leaf)) {
-    throw "The Chinese localization asset is missing: $SourcePatchAsset"
+    throw "找不到中文本地化资源：$SourcePatchAsset。请确认补丁文件完整后重试。"
 }
 
 $moduleMatch = $null
 if (-not $HasMarker) {
     if ($StartupPatchInfo.State -ne 'Unpatched') {
-        throw "A safe startup translation cannot be installed because the app.asar text state is $($StartupPatchInfo.State)."
+        throw "app.asar 文本状态为 $($StartupPatchInfo.State)，无法安全安装启动译文。已停止操作以保护原文件；请确认应用版本和文件状态后重试。"
     }
     $moduleMatch = [regex]::Match($CurrentIndexText, '(?m)^\s*<script type="module"')
     if (-not $moduleMatch.Success) {
-        throw 'Could not locate the Freebuff main module script tag. The installation directory was not modified.'
+        throw '找不到 Freebuff 主模块的 script 标签。安装目录未修改；应用结构可能已更改，请确认兼容版本后重试。'
     }
 }
 
 if (-not $VersionCompatible) {
     if ($Force) {
-        Write-Host 'The legacy -Force switch was supplied; interactive y/Y confirmation is still required.'
+        Write-Host '检测到旧版 -Force 参数；仍需在交互提示中输入 y/Y 确认。'
     }
     Confirm-IncompatibleInstall -DetectedVersion $CurrentVersion -SupportedVersion $TestedAppVersion
     Assert-FreebuffStopped
-    Write-Warning "Proceeding with explicitly confirmed installation on Freebuff $CurrentVersion."
+    Write-Warning "已确认，将继续在 Freebuff $CurrentVersion 上安装。"
 }
 
 if ($HasMarker) {
     if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
-        throw 'A localization marker exists, but the patch manifest is missing. Inspect the installation directory or restore from a backup first.'
+        throw '检测到本地化标记，但缺少补丁清单。请先检查安装目录或从备份还原，再重试。'
     }
     $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($manifest.AppVersion -ne $CurrentVersion) {
-        throw 'The localization marker belongs to another Freebuff version. Refresh stopped to protect the existing backup chain.'
+        throw '本地化标记属于其他 Freebuff 版本。已停止刷新以保护现有备份链；请安装匹配版本的补丁后重试。'
     }
     if ($null -eq $InjectedPatchVersion) {
-        throw 'The localization marker exists, but its injected patch version is missing. Installation stopped.'
+        throw '检测到本地化标记，但找不到其中记录的补丁版本。已停止安装；请检查文件和备份后重试。'
     }
     # A new patch asset is allowed; drift in already installed files is not.
-    Assert-FileHash -Path $IndexPath -ExpectedHash $manifest.PatchedIndexHash -Description 'Installed index.html'
-    Assert-FileHash -Path $InstalledPatchAsset -ExpectedHash $manifest.PatchedAssetHash -Description 'Installed translation asset'
-    if ($MainAsset.Name -ne $manifest.MainAssetName) { throw 'The main UI asset name changed. Refresh stopped.' }
-    Assert-FileHash -Path $MainAsset.Path -ExpectedHash $manifest.MainAssetHash -Description 'Main UI asset'
-    Assert-FileHash -Path $manifest.BackupIndexPath -ExpectedHash $manifest.OriginalIndexHash -Description 'Original index.html backup'
+    Assert-FileHash -Path $IndexPath -ExpectedHash $manifest.PatchedIndexHash -Description '已安装的 index.html'
+    Assert-FileHash -Path $InstalledPatchAsset -ExpectedHash $manifest.PatchedAssetHash -Description '已安装的译文资源'
+    if ($MainAsset.Name -ne $manifest.MainAssetName) { throw '主界面资源文件名已更改。已停止刷新以避免修改错误文件；请检查应用版本后重试。' }
+    Assert-FileHash -Path $MainAsset.Path -ExpectedHash $manifest.MainAssetHash -Description '主界面资源文件'
+    Assert-FileHash -Path $manifest.BackupIndexPath -ExpectedHash $manifest.OriginalIndexHash -Description '原始 index.html 备份'
     if ($ManifestStartupPatchEnabled) {
-        Assert-FileHash -Path $AppAsarPath -ExpectedHash $ManifestPatchedAppAsarHash -Description 'Installed app.asar'
+        Assert-FileHash -Path $AppAsarPath -ExpectedHash $ManifestPatchedAppAsarHash -Description '已安装的 app.asar'
     } elseif (-not [string]::IsNullOrWhiteSpace([string](Get-PropertyValue -InputObject $manifest -Name 'OriginalAppAsarHash'))) {
-        Assert-FileHash -Path $AppAsarPath -ExpectedHash $manifest.OriginalAppAsarHash -Description 'Unpatched app.asar'
+        Assert-FileHash -Path $AppAsarPath -ExpectedHash $manifest.OriginalAppAsarHash -Description '未打补丁的 app.asar'
     }
     $manifestBackupDir = Get-PropertyValue -InputObject $manifest -Name 'BackupDir'
     if ([string]::IsNullOrWhiteSpace([string]$manifestBackupDir) -or -not (Test-Path -LiteralPath $manifestBackupDir -PathType Container)) {
-        throw "The existing backup directory is missing: $manifestBackupDir"
+        throw "现有备份目录不存在：$manifestBackupDir。已停止刷新以保护备份链；请检查目录后重试。"
     }
     $backupAppAsarPath = Get-PropertyValue -InputObject $manifest -Name 'BackupAppAsarPath'
     $originalAppAsarHash = Get-PropertyValue -InputObject $manifest -Name 'OriginalAppAsarHash'
     if ([string]::IsNullOrWhiteSpace([string]$backupAppAsarPath)) {
         if ($StartupPatchInfo.State -ne 'Unpatched') {
-            throw "A safe original app.asar backup cannot be created because the startup text state is $($StartupPatchInfo.State)."
+            throw "启动文本状态为 $($StartupPatchInfo.State)，无法安全创建原始 app.asar 备份。已停止操作以保护文件；请确认版本并重试。"
         }
         $backupAppAsarPath = Join-Path $manifestBackupDir 'app.asar'
         Copy-Item -LiteralPath $AppAsarPath -Destination $backupAppAsarPath -Force
         $originalAppAsarHash = Get-Sha256 -Path $backupAppAsarPath
     } else {
         if (-not (Test-Path -LiteralPath $backupAppAsarPath -PathType Leaf)) {
-            throw "The original app.asar backup is missing: $backupAppAsarPath"
+            throw "找不到原始 app.asar 备份：$backupAppAsarPath。已停止还原；请检查备份目录后重试。"
         }
         if ((Get-Sha256 -Path $backupAppAsarPath) -ne $originalAppAsarHash) {
-            throw 'The app.asar backup hash does not match the installation manifest. Refresh stopped.'
+            throw 'app.asar 备份的哈希值与安装清单不符。已停止刷新以保护备份；请检查备份后重试。'
         }
     }
     if (($StartupPatchInfo.State -ne 'Unpatched') -and ($StartupPatchInfo.State -ne 'Patched')) {
-        throw "The startup text layout is not recognized (original=$($StartupPatchInfo.OriginalCount), localized=$($StartupPatchInfo.LocalizedCount)). Installation stopped."
+        throw "无法识别启动文本布局（原文=$($StartupPatchInfo.OriginalCount)，译文=$($StartupPatchInfo.LocalizedCount)）。已停止安装；请确认应用版本和译文后重试。"
     }
     $assetTemp = Join-Path $AssetsDir ('.freebuff-zh-asset-' + [guid]::NewGuid().ToString('N') + '.tmp')
     $indexTemp = Join-Path $UiDir ('.freebuff-zh-index-' + [guid]::NewGuid().ToString('N') + '.tmp')
@@ -647,7 +712,7 @@ if ($HasMarker) {
         }
         $installedStartupInfo = Get-StartupPatchInfo -Path $AppAsarPath
         if ($installedStartupInfo.State -ne 'Patched') {
-            throw 'The startup translation was not detected after refresh.'
+            throw '刷新后未检测到启动译文。已停止操作；请检查安装结果或从备份还原后重试。'
         }
         $manifest.PatchVersion = $PatchVersion
         $manifest.MainAssetName = $MainAsset.Name
@@ -662,13 +727,13 @@ if ($HasMarker) {
         $manifest | Add-Member -NotePropertyName 'RefreshedAt' -NotePropertyValue ((Get-Date).ToString('o')) -Force
         $manifest.Installed = $true
         Write-JsonFile -Value $manifest -Path $ManifestPath
-        Write-Host "Freebuff Chinese localization refreshed to patch version $PatchVersion."
+        Write-Host "Freebuff 中文本地化已刷新至补丁版本 $PatchVersion。"
     } catch {
         $failureMessage = $_.Exception.Message
         if (-not (Restore-VerifiedFile -Source $rollbackIndex -Destination $IndexPath -ExpectedHash $CurrentIndexHash)) { $refreshRollbackSucceeded = $false }
         if (-not (Restore-VerifiedFile -Source $rollbackAsset -Destination $InstalledPatchAsset -ExpectedHash $InstalledPatchHash)) { $refreshRollbackSucceeded = $false }
         if (-not (Restore-VerifiedFile -Source $rollbackAsar -Destination $AppAsarPath -ExpectedHash $CurrentAppAsarHash)) { $refreshRollbackSucceeded = $false }
-        throw "Chinese patch refresh failed. Rollback verified: $refreshRollbackSucceeded. If incomplete, recovery copies remain beside the app files. Reason: $failureMessage"
+        throw "中文补丁刷新失败。回滚校验结果：$refreshRollbackSucceeded。如回滚未完成，恢复副本仍保留在应用文件旁。原因：$failureMessage。请检查恢复副本后重试。"
     } finally {
         if (Test-Path -LiteralPath $assetTemp -PathType Leaf) {
             Remove-Item -LiteralPath $assetTemp -Force -ErrorAction SilentlyContinue
@@ -697,7 +762,7 @@ $historyDir = $null
 if ($PatchState -eq 'UpdatedAppNeedsInstall') {
     $PreviousBackupDir = $ManifestBackupDir
     if ([string]::IsNullOrWhiteSpace([string]$PreviousBackupDir) -or -not (Test-Path -LiteralPath $PreviousBackupDir -PathType Container)) {
-        throw "The previous patch backup directory is missing, so migration cannot safely preserve its history: $PreviousBackupDir"
+        throw "找不到旧补丁备份目录，无法在迁移时安全保留备份记录：$PreviousBackupDir。已停止迁移；请检查备份目录后重试。"
     }
     $PreviousAppVersion = $ManifestAppVersion
     $PreviousPatchVersion = $ManifestPatchVersion
@@ -739,18 +804,18 @@ try {
         Copy-Item -LiteralPath $InstalledPatchAsset -Destination $BackupPatchAssetPath -Force
     }
     if ((Get-Sha256 -Path $BackupIndexPath) -ne $OriginalIndexHash) {
-        throw 'The index.html backup failed hash verification.'
+        throw 'index.html 备份哈希校验失败。已停止安装以确保安全，请检查磁盘或备份后重试。'
     }
     if ((Get-Sha256 -Path $BackupAppAsarPath) -ne $OriginalAppAsarHash) {
-        throw 'The app.asar backup failed hash verification.'
+        throw 'app.asar 备份哈希校验失败。已停止安装以确保安全，请检查磁盘或备份后重试。'
     }
     if ($OriginalPatchAssetExisted -and ((Get-Sha256 -Path $BackupPatchAssetPath) -ne (Get-Sha256 -Path $InstalledPatchAsset))) {
-        throw 'The same-name patch asset backup failed hash verification.'
+        throw '同名补丁资源备份哈希校验失败。已停止安装以确保安全，请检查磁盘或备份后重试。'
     }
 } catch {
     $failureMessage = $_.Exception.Message
     Remove-NewInstallArtifacts -BackupDir $BackupDir -BackupRoot $BackupRoot -BackupFiles @($BackupIndexPath, $BackupPatchAssetPath, $BackupAppAsarPath) -HistoryPath $PreviousManifestPath -HistoryRoot $historyDir
-    throw "Backup preparation failed before modifying the app. Reason: $failureMessage"
+    throw "备份准备失败，应用尚未修改。原因：$failureMessage。请检查磁盘空间、权限和备份路径后重试。"
 }
 
 $injection = @"
@@ -775,14 +840,14 @@ try {
 
     $installedIndexText = [IO.File]::ReadAllText($IndexPath)
     if (-not $installedIndexText.Contains($PatchMarkerStart)) {
-        throw 'The patch marker was not detected after installation.'
+        throw '安装后未检测到补丁标记。已停止操作；请检查安装结果或从备份还原后重试。'
     }
     if (-not (Test-Path -LiteralPath $InstalledPatchAsset -PathType Leaf)) {
-        throw 'The Chinese localization asset was not detected after installation.'
+        throw '安装后未检测到中文本地化资源。请检查补丁文件或从备份还原后重试。'
     }
     $installedStartupPatchInfo = Get-StartupPatchInfo -Path $AppAsarPath
     if ($installedStartupPatchInfo.State -ne 'Patched') {
-        throw 'The startup translation was not detected after installation.'
+        throw '安装后未检测到启动译文。请检查安装结果或从备份还原后重试。'
     }
 
     $manifest = [ordered]@{
@@ -815,10 +880,10 @@ try {
         PreviousPatchVersion = $PreviousPatchVersion
     }
     Write-JsonFile -Value $manifest -Path $ManifestPath
-    Write-Host "Freebuff $CurrentVersion Chinese patch $PatchVersion installed."
-    Write-Host "Original file backup: $BackupDir"
-    Write-Host 'Start Freebuff to verify the UI. To restore:'
-    Write-Host "  powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -Action Restore"
+    Write-Host "Freebuff $CurrentVersion 中文补丁 $PatchVersion 已安装。"
+    Write-Host "原始文件备份位置：$BackupDir"
+    Write-Host '现在可以打开 Freebuff 使用中文界面。需要还原时，双击“还原英文.cmd”。'
+
 } catch {
     $failureMessage = $_.Exception.Message
     $installRollbackSucceeded = $true
@@ -828,7 +893,7 @@ try {
     if ($installRollbackSucceeded) {
         Remove-NewInstallArtifacts -BackupDir $BackupDir -BackupRoot $BackupRoot -BackupFiles @($BackupIndexPath, $BackupPatchAssetPath, $BackupAppAsarPath) -HistoryPath $PreviousManifestPath -HistoryRoot $historyDir
     }
-    throw "Chinese patch installation failed. Rollback verified: $installRollbackSucceeded. If incomplete, original backups remain at: $BackupDir. Reason: $failureMessage"
+    throw "中文补丁安装失败。回滚校验结果：$installRollbackSucceeded。如回滚未完成，原始备份仍保存在：$BackupDir。原因：$failureMessage。请检查备份后重试。"
 } finally {
     if (Test-Path -LiteralPath $tempIndex -PathType Leaf) {
         Remove-Item -LiteralPath $tempIndex -Force -ErrorAction SilentlyContinue
@@ -839,4 +904,10 @@ try {
     if (Test-Path -LiteralPath $tempAsar -PathType Leaf) {
         Remove-Item -LiteralPath $tempAsar -Force -ErrorAction SilentlyContinue
     }
+}
+
+} catch {
+    Write-Host "操作未完成：$($_.Exception.Message)" -ForegroundColor Red
+    Write-Host '请根据上方提示处理后重试；如需反馈，请复制本窗口内容。'
+    exit 1
 }

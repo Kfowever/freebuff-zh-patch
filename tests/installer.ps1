@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param([string]$TestRoot = (Join-Path ([IO.Path]::GetTempPath()) ('freebuff-zh-tests-' + [guid]::NewGuid().ToString('N'))))
 
 Set-StrictMode -Version Latest
@@ -55,10 +55,11 @@ function New-Fixture([string]$Name, [string]$EntryUrl = './assets/main.js') {
     }
 }
 
-function Invoke-Patch($Fixture, [string]$Action = 'Install', [string]$Script = $Engine) {
+function Invoke-Patch($Fixture, [string]$Action = 'Install', [string]$Script = $Engine, [switch]$Force) {
     $info = New-Object Diagnostics.ProcessStartInfo
     $info.FileName = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
     $arguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Script, '-Action', $Action, '-AppDir', $Fixture.App, '-StateDir', $Fixture.State)
+    if ($Force) { $arguments += '-Force' }
     $info.Arguments = ($arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
     $info.UseShellExecute = $false
     $info.CreateNoWindow = $true
@@ -124,7 +125,7 @@ $clean = New-Fixture ('unicode-' + [char]0x4e2d + [char]0x6587)
 if (@(Get-Process -Name Freebuff -ErrorAction SilentlyContinue).Count -gt 0) {
     $before = Get-Snapshot $clean
     $result = Invoke-Patch $clean -Script $OriginalEngine
-    Assert-True ($result.ExitCode -ne 0 -and $result.Output.Contains('Freebuff is running')) 'shipping process guard blocks a running app'
+    Assert-True ($result.ExitCode -ne 0 -and $result.Output.Contains('Freebuff 正在运行')) 'shipping process guard blocks a running app'
     Assert-True ((Get-Snapshot $clean) -eq $before) 'shipping process guard makes no fixture changes'
 }
 $result = Invoke-Patch $clean
@@ -211,7 +212,7 @@ foreach ($action in @('Install', 'Refresh', 'Restore')) {
         $afterAsset = if (Test-Path $fixture.Asset) { (Get-FileHash $fixture.Asset).Hash } else { $null }
         Assert-True ($afterAsset -eq $beforeAsset) "$action restores prior asset state"
         if ($failRollback) {
-            Assert-True ($result.Output.Contains('Rollback verified: False')) "$action reports incomplete recovery"
+            Assert-True ($result.Output.Contains('回滚校验结果：False')) "$action reports incomplete recovery"
             if ($action -eq 'Install') {
                 $copies = @(Get-ChildItem -LiteralPath (Join-Path $fixture.State 'backups') -Recurse -File)
                 Assert-True (@($copies | Where-Object { (Get-FileHash $_.FullName).Hash -eq $beforeIndex }).Count -gt 0) 'failed install retains original index backup'
@@ -221,7 +222,7 @@ foreach ($action in @('Install', 'Refresh', 'Restore')) {
                 Assert-True (@($copies | Where-Object { (Get-FileHash $_.FullName).Hash -eq $beforeIndex }).Count -gt 0) "$action retains previous index recovery copy"
             }
         } else {
-            Assert-True ($result.Output.Contains('Rollback verified: True')) "$action verifies successful recovery"
+            Assert-True ($result.Output.Contains('回滚校验结果：True')) "$action verifies successful recovery"
             Assert-True ((Get-FileHash $fixture.Index).Hash -eq $beforeIndex) "$action recovers index"
             Assert-True (@(Get-ChildItem -LiteralPath $fixture.App -Recurse -File -Filter '*.tmp').Count -eq 0) "$action removes temporary files after verified recovery"
             if ($action -eq 'Install') {
@@ -231,4 +232,42 @@ foreach ($action in @('Install', 'Refresh', 'Restore')) {
     }
 }
 
+# Preserve the old backup chain across an application update.
+$migration = New-Fixture 'app-update-migration'
+$result = Invoke-Patch $migration
+Assert-True ($result.ExitCode -eq 0) 'migration old install fixture'
+$old = Read-Manifest $migration
+$old.AppVersion = '0.0.190.0'; $old.PatchVersion = '0.8.2'
+[IO.File]::WriteAllText($migration.Manifest, ($old | ConvertTo-Json -Depth 10), $Utf8)
+$oldManifestHash = (Get-FileHash $migration.Manifest).Hash
+Copy-Item -LiteralPath $old.BackupIndexPath -Destination $migration.Index -Force
+Copy-Item -LiteralPath $old.BackupAppAsarPath -Destination $migration.Asar -Force
+Remove-Item -LiteralPath $migration.Asset
+$before = Get-Snapshot $migration
+$result = Invoke-Patch $migration -Action Restore
+Assert-True ($result.ExitCode -ne 0) 'cross-version restore is blocked'
+Assert-True ((Get-Snapshot $migration) -eq $before) 'cross-version restore leaves all files unchanged'
+$result = Invoke-Patch $migration
+Assert-True ($result.ExitCode -eq 0) "updated app migration: $($result.Output)"
+$current = Read-Manifest $migration
+Assert-True ($current.PreviousAppVersion -eq '0.0.190.0') 'migration records prior app version'
+Assert-True ((Get-FileHash $current.PreviousManifestPath).Hash -eq $oldManifestHash) 'migration archives exact old manifest'
+Assert-True (Test-Path -LiteralPath $old.BackupDir -PathType Container) 'migration preserves old backup directory'
+$result = Invoke-Patch $migration -Action Restore
+Assert-True ($result.ExitCode -eq 0) 'new app restores after migration'
+Assert-True ((Get-FileHash $migration.Index).Hash -eq $migration.OriginalIndex) 'migration restores current app index'
+Assert-True ((Get-FileHash $migration.Asar).Hash -eq $migration.OriginalAsar) 'migration restores current app archive'
+
+# Legacy -Force also requires explicit confirmation on an unsupported version.
+$incompatibleEngine = New-TestEngine
+$code = [IO.File]::ReadAllText($incompatibleEngine)
+$code = $code.Replace(('TestedAppVersion = ' + "'$AppVersion'"), "TestedAppVersion = '0.0.999.0'")
+[IO.File]::WriteAllText($incompatibleEngine, $code, $Utf8Bom)
+foreach ($force in @($false, $true)) {
+    $fixture = New-Fixture ('incompatible-' + $force)
+    $before = Get-Snapshot $fixture
+    $result = Invoke-Patch $fixture -Script $incompatibleEngine -Force:$force
+    Assert-True ($result.ExitCode -eq 3) 'noninteractive incompatible install cancels even with Force'
+    Assert-True ((Get-Snapshot $fixture) -eq $before) 'incompatible cancellation makes no changes'
+}
 Write-Output "PASS: $script:Assertions installer assertions. Fixtures retained at $TestRoot"

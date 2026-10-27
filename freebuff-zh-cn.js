@@ -6,11 +6,40 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.8.2'
+  const PATCH_VERSION = '0.9.0'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
     Object.entries({
+      // Freebuff 0.0.192: reviewed Luna translation batches.
+      "This model is leaving Freebuff soon. Pick another model to keep working without interruption.": "此模型即将从 Freebuff 下线。请选择其他模型，以便继续工作。",
+      "Unable to connect to the terminal": "无法连接到终端",
+      "Stop task": "停止任务",
+      "A chat’s paid hour ends too.": "一个聊天的付费小时也会结束。",
+      "Type your answer…": "输入你的回答…",
+      "Freebuff has a question — answer above to continue.": "Freebuff 有一个问题——请在上方回答以继续。",
+      "Running in this conversation. It finishes on its own; stopping ends it, and it won’t resume.": "正在此对话中运行。任务会自行完成；停止后将无法恢复。",
+      "DNS and HTTPS are ready. Press Make primary to start serving the site at this address.": "DNS 和 HTTPS 已就绪。点击“设为主地址”即可通过此地址提供网站。",
+      "Show all models": "显示所有模型",
+      "Connected.": "已连接。",
+      "A sponsor is paying for this run — stopping ends it and it won’t resume.": "赞助方正在为此次运行付费——停止后任务将结束且无法继续。",
+      "This chat did not finish moving to this computer. Choose Local to finish moving it.": "此聊天未能完成迁移到此电脑。选择“本地”以完成迁移。",
+      "Queued — starts when the Mission finishes": "已排队 — 当前目标结束后启动",
+      "Freebuff has a question — answer above to continue": "Freebuff 有一个问题——请在上方回答以继续",
+      "Find services": "查找服务",
+      "Could not close the session": "无法关闭会话",
+      "List every model in the model picker. When off, it offers one model at three thinking levels: Fast, Default and Max.": "在模型选择器中列出所有模型。关闭后，将提供一个模型及三个思考等级：快速、默认和最高。",
+      "Stop this sponsored task?": "要停止此赞助任务吗？",
+      "Keep running": "继续运行",
+      "Your other chats stop too until you reopen Freebuff.": "其他聊天也会停止，直到你重新打开 Freebuff。",
+      "Stop and close session": "停止并关闭会话",
+      "Your key stays out of chat and isn’t sent to Freebuff’s servers. Freebuff makes it available to this setup and, when working directly in your project, saves it in a git-ignored environment file for your app.": "你的密钥不会出现在聊天中，也不会发送到 Freebuff 服务器。Freebuff 会将密钥用于此项配置；直接在项目中工作时，会将其保存到应用的环境文件中，并让 Git 忽略该文件。",
+      "The sponsor pays for this run. It runs in the background and edits this project’s files without committing, so you can keep working in your own chats. You can undo its file changes.": "本次运行由赞助方付费。它会在后台运行并修改此项目的文件，但不会提交更改，因此你可以继续在自己的聊天中工作。你可以撤销它对文件所做的更改。",
+      "Wait for this chat to finish moving": "等待此聊天完成迁移",
+      "An unexpected bug occurred.": "发生了意外错误。",
+      "This project has too many files to summarize here (over 300 outside dependency and build folders). To continue, set up Git yourself: in a terminal in this folder run `git init`, add a `.gitignore` for dependencies, build output and `.env` files, then `git add -A` and `git commit -m \"Initial commit\"`. Then choose Check again.": "此项目文件过多，无法在此处汇总（依赖项和构建目录之外超过 300 个文件）。若要继续，请自行设置 Git：在此文件夹的终端中运行 `git init`，添加用于忽略依赖项、构建输出和 `.env` 文件的 `.gitignore`，然后运行 `git add -A` 和 `git commit -m \"Initial commit\"`。之后选择“重新检查”。",
+      "Leaving": "即将下线",
+
       // Freebuff 0.8.1: visible labels, server-delivered settings and split UI text.
       "Minimize": "最小化",
       "Users": "用户",
@@ -2416,7 +2445,7 @@
         '端点可访问。身份验证和编程支持仍需通过推理测试确认。',
       'Key replaced. Select this updated connection in a new task.': '密钥已更换。请在新任务中选择此更新后的连接。',
       // Freebuff 0.0.109: navigation, thread mentions, history and refunds.
-      'Open tabs': '打开的标签页',
+
       'Freebuff menu': 'Freebuff 菜单',
       Spaces: '空间',
       'New space': '新建空间',
@@ -2429,7 +2458,7 @@
       'Start a new thread': '新建任务',
       'App tools': '应用工具',
       Refresh: '刷新',
-      'Search connectors': '搜索连接器',
+
       'All connectors': '全部连接器',
       'Remove connector': '移除连接器',
       Message: '消息',
@@ -2497,11 +2526,10 @@
       'Anonymous provider retains prompts': '匿名服务商会保留提示内容',
       'Rate limited and shared by all users: queues when busy, then answers on DeepSeek V4.1 Flash.':
         '所有用户共享且有速率限制：繁忙时排队，随后由 DeepSeek V4.1 Flash 回答。',
-      'Freebuff couldn’t load': 'Freebuff 无法加载',
-      'Part of the interface did not start. Reload once; if this screen returns, reinstall the latest version. Your projects and conversations are safe.':
-        '部分界面未能启动。请重新加载一次；若再次出现此页面，请重新安装最新版本。你的项目和对话不会丢失。',
-      'Reload Freebuff': '重新加载 Freebuff',
-      'Get latest installer': '获取最新版安装程序',
+
+
+
+
 
       // New connector catalog and access review UI.
       Connecting: '正在连接',
@@ -2692,7 +2720,7 @@
       'Open threads': '打开的任务',
       Home: '主页',
       'New thread': '新建任务',
-      'New messages': '新消息',
+
       Finished: '已完成',
       'Turn failed': '执行失败',
       Stopped: '已停止',
@@ -3494,6 +3522,38 @@
   }
 
   const patterns = [
+    // Freebuff 0.0.192: complete dynamic messages; preserve names and amounts.
+    [new RegExp("^Moved to (.+?) — (.+?) came with it\\.$"), (_match, v1, v2) => "已移至 " + v1 + " — 随项目一并迁移了 " + translateValue(v2) + "。"],
+    [new RegExp("^You can add up to (.+?) terminal selections$"), (_match, v1) => "最多可添加 " + v1 + " 个终端选择项"],
+    [new RegExp("^Could not save Show all models: (.+?)$"), (_match, v1) => "无法保存“显示所有模型”设置：" + v1 + ""],
+    [new RegExp("^Resize chat split (.+?)$"), (_match, v1) => "调整聊天分栏" + v1 + ""],
+    [new RegExp("^This removes the secret from (.+?)\\. Code that depends on it may stop working\\.$"), (_match, v1) => "这会从 " + v1 + " 中移除此密钥。依赖它的代码可能会停止工作。"],
+    [new RegExp("^Daily activity over (.+?) days, in (.+?) time$"), (_match, v1, v2) => "过去 " + v1 + " 天的每日活动，时区：" + v2 + ""],
+    [new RegExp("^Use up to (.+?) links\\.$"), (_match, v1) => "最多使用 " + v1 + " 个链接。"],
+    [new RegExp("^Use up to (.+?) screenshots\\.$"), (_match, v1) => "最多使用 " + v1 + " 张截图。"],
+    [new RegExp("^They passed the GitHub age check and activated with full access\\. Worth (.+?) once — cash it out above while your account is on full access\\.$"), (_match, v1) => "对方已通过 GitHub 年龄验证并激活完整访问权限。可获得一次性奖励 " + v1 + " — 在账户保持完整访问权限期间，可在上方提现。"],
+    [new RegExp("^Their GitHub account is under (.+?) months old\\. This status updates automatically once it reaches the minimum age\\.$"), (_match, v1) => "对方的 GitHub 账户注册未满 " + v1 + " 个月。达到最低注册时长后，此状态会自动更新。"],
+    [new RegExp("^New members earn (.+?) once\\. Connect a Discord account at least 7 days old and join the Freebuff server\\.$"), (_match, v1) => "新成员可一次性获得 " + v1 + "。请关联注册至少 7 天的 Discord 账户，并加入 Freebuff 服务器。"],
+    [new RegExp("^No spend in the last (.+?) days\\.$"), (_match, v1) => "过去 " + v1 + " 天没有消费。"],
+    [new RegExp("^Daily spend, last (.+?) days\\. (.+?)\\.$"), (_match, v1, v2) => "过去 " + v1 + " 天的每日消费：" + v2 + "。"],
+    [new RegExp("^A skill can include at most (.+?) supporting files\\.$"), (_match, v1) => "一个技能最多可包含 " + v1 + " 个配套文件。"],
+    [new RegExp("^Shorten this to (.+?) characters or fewer\\.$"), (_match, v1) => "请将此内容缩短至 " + v1 + " 个字符以内。"],
+    [new RegExp("^Waiting for (.+?)\\.$"), (_match, v1) => "正在等待 " + v1 + "。"],
+    [new RegExp("^It’s running in the background, so you can keep working in your own chats\\. (.+?) is paying for this run — stopping ends it and it won’t resume\\.$"), (_match, v1) => "它正在后台运行，因此你可以继续处理自己的聊天。" + v1 + "正在为此次运行付费 — 停止后任务将结束且无法继续。"],
+    [new RegExp("^Quit and stop (.+?)’s sponsored task\\?$"), (_match, v1) => "退出并停止 " + v1 + " 的赞助任务？"],
+    [new RegExp("^Quit and stop (.+?) sponsored tasks\\?$"), (_match, v1) => "退出并停止 " + v1 + " 个赞助任务？"],
+    [new RegExp("^Available in (.+?)m$"), (_match, v1) => "" + v1 + " 分钟后可用"],
+    [new RegExp("^This session ends automatically after (.+?) minutes of inactivity, freeing its slot for another tab\\. Send a message before the countdown ends to reset it\\. Your conversation stays saved\\.$"), (_match, v1) => "此会话在闲置 " + v1 + " 分钟后会自动结束，并释放名额供其他标签页使用。在倒计时结束前发送消息即可重置计时。你的对话会保留。"],
+    [new RegExp("^You're close to the limit on (.+?) — (.+?) of (.+?) used\\.$"), (_match, v1, v2, v3) => "" + v1 + " 即将达到使用上限 — 已用 " + v2 + "/" + v3 + "。"],
+    [new RegExp("^Got it\\. We'll ask again in (.+?) days\\.$"), (_match, v1) => "知道了。" + v1 + " 天后会再次询问。"],
+    [new RegExp("^Stop (.+?)’s sponsored task\\?$"), (_match, v1) => "停止 " + v1 + " 的赞助任务？"],
+    [new RegExp("^(.+?)’s sponsored task is running in the background\\. Quitting ends it, and it won’t resume when you reopen Freebuff\\.$"), (_match, v1) => "" + v1 + " 的赞助任务正在后台运行。退出会结束该任务，重新打开 Freebuff 后也无法恢复。"],
+    [new RegExp("^(.+?) sponsored tasks are running in the background\\. Quitting ends them, and they won’t resume when you reopen Freebuff\\.$"), (_match, v1) => "有 " + v1 + " 个赞助任务正在后台运行。退出会结束这些任务，重新打开 Freebuff 后也无法恢复。"],
+    [new RegExp("^(.+?) paid hours end too\\.$"), (_match, v1) => "另有 " + v1 + " 个付费小时也会结束。"],
+
+    [/^Offers are paused(?: until (.+))?\.$/, (_match, date) => date ? `赞助任务已暂停，将于 ${date} 恢复。` : '赞助任务已暂停。'],
+    [/^This chat has a paid hour with ([\d,]+) minutes? left\. Closing it ends the hour\.$/, (_match, minutes) => `此聊天的付费小时还剩 ${minutes} 分钟。关闭聊天会结束这一小时。`],
+
     [/^Wallet: ([\d,]+) hours? remaining( \(last known\))?$/, (_match, balance, stale) =>
       `钱包：剩余 ${balance} 小时额度${stale ? '（上次确认的余额）' : ''}`],
     [/^About (?!the\b)(.+)$/, (_match, subject) => `关于${translateValue(subject)}`],
@@ -3598,7 +3658,7 @@
     [/^Update the (.+) CLI · (.+)$/, '更新 $1 CLI · $2'],
     [/^Freebuff has (\d+) questions$/, 'Freebuff 有 $1 个问题'],
     [/^Search (\d+) connectors…$/, '搜索 $1 个连接器…'],
-    [/^No connector matches “(.+)”\.$/, '没有匹配“$1”的连接器。'],
+
     [
       /^(\d+(?:\.\d+)?\/\d+(?:\.\d+)?) sessions today\. Each lasts up to 1 hour\. Resets (.+)\.$/,
       '今日会话：$1。每个会话最长持续 1 小时。重置时间：$2。',
@@ -3802,7 +3862,6 @@
     [/^Looking for a newer version than Freebuff (.+)\.$/, '正在查找比 Freebuff $1 更新的版本。'],
     [/^(\d+) pixels$/, '$1 像素'],
 
-
     [new RegExp("^(.+) raises your daily hours from ([\\d,]+) to ([\\d,]+) and adds ([\\d,]+) hours? a month\\. \\$([\\d,.]+)\\/mo\\.$"), "$1 将每日小时额度从 $2 提高至 $3，并每月增加 $4 小时额度。每月收费 $$$5。"],
     [new RegExp("^(.+) raises your daily hours from ([\\d,]+) to ([\\d,]+) and adds ([\\d,]+) hours? a month\\. \\$([\\d,.]+) first month, \\$([\\d,.]+)\\/mo after\\.$"), "$1 将每日小时额度从 $2 提高至 $3，并每月增加 $4 小时额度。首月收费 $$$5，之后每月收费 $$$6。"],
     [new RegExp("^(.+) raises your daily hours from ([\\d,]+) to ([\\d,]+) and your monthly bonus from ([\\d,]+) to ([\\d,]+) hours?\\. \\$([\\d,.]+)\\/mo, replacing (.+) from today\\.$"), "$1 将每日小时额度从 $2 提高至 $3，并将每月奖励从 $4 提高至 $5 小时额度。每月收费 $$$6，今天起替换 $7。"],
@@ -3819,10 +3878,9 @@
     [new RegExp("^Saved as (.+) in (.+), for (.+)\\.$"), "已保存为 $1（位于 $2），用于 $3。"],
     [new RegExp("^Another model on (.+)$"), "$1 上的另一个模型"],
     [new RegExp("^Key saved for (.+)$"), "密钥已保存至 $1"],
-    [new RegExp("^New API key for (.+)$"), "$1 的新 API 密钥"],
+
     [new RegExp("^Step 1 of 2 · Verifying and installing (.+) (.+)$"), "第 1 步，共 2 步 · 正在验证并安装 $1 $2"],
-    [new RegExp("^Update the (.+) CLI · (.+)$"), "更新 $1 CLI · $2"],
-    [new RegExp("^Installing Freebuff (.+)$"), "正在安装 Freebuff $1"],
+
     [new RegExp("^More than one file has the path (.+)\\. Remove one and try again\\.$"), "多个文件使用相同路径 $1。请移除其中一个后重试。"],
     [new RegExp("^Actions for (.+)$"), "$1 的操作"],
     [new RegExp("^Regular usage: (.+)$"), "常规用量：$1"],
@@ -3838,7 +3896,7 @@
     [new RegExp("^Could not launch the preview: (.+)$"), "无法启动预览：$1"],
     [new RegExp("^Continue in Cloud and leave changes on (.+) undisturbed$"), "继续在云端运行，并保持 $1 中的更改不变"],
     [new RegExp("^You have uncommitted changes in (.+) on (.+) before switching to (.+)\\.$"), "切换到 $3 前，$2 中的 $1 有未提交的更改。"],
-    [new RegExp("^Freebuff has (\\d+) questions$"), "Freebuff 有 $1 个问题"],
+
     [new RegExp("^Exited with code (\\d+)\\.$"), "已退出，代码为 $1。"],
     [new RegExp("^Published to (.+)$"), "已发布到 $1"],
     [new RegExp("^Editing a message — sending will replace it(.*)\\.$"), "正在编辑消息 — 发送后将替换原消息$1。"],
@@ -3846,7 +3904,7 @@
     [new RegExp("^Your project folder has uncommitted edits in (.+)$"), "你的项目文件夹在 $1 中有未提交的更改"],
     [new RegExp("^Clear cookies and site data for (.+)\\? This signs out its tabs\\.$"), "要清除此配置文件 $1 的 Cookie 和站点数据吗？这会使其中的标签页退出登录。"],
     [new RegExp("^Could not select that element: (.+)$"), "无法选择该元素：$1"],
-    [new RegExp("^Dismiss notification: (.+)$"), "关闭通知：$1"],
+
     [new RegExp("^Look up “(.+)”$"), "查找“$1”"],
     [new RegExp("^Dragging was cancelled\\. Draggable item (.+) was dropped\\.$"), "拖动已取消。已放下可拖动项目 $1。"],
     [new RegExp("^Couldn’t open in (.+)\\.$"), "无法在 $1 中打开。"],
@@ -3894,12 +3952,12 @@
     [new RegExp("^No server matches “(.+)”\\.$"), "没有名称匹配“$1”的服务器。"],
     [new RegExp("^Not saved: (.+)$"), "未保存：$1"],
     [new RegExp("^Connected as (.+)$"), "已连接账户：$1"],
-    [new RegExp("^Reasoning effort for (.+)$"), "$1 的推理强度"],
+
     [new RegExp("^Claude subscription · ending (.+)$"), "Claude 订阅 · 到期时间：$1"],
-    [new RegExp("^Checking the installed (.+) CLI…$"), "正在检查已安装的 $1 CLI…"],
+
     [new RegExp("^Connected with (.+)$"), "已连接：$1"],
     [new RegExp("^About installing (.+)$"), "关于安装 $1"],
-    [new RegExp("^Add another (.+) account$"), "再添加一个 $1 账户"],
+
     [new RegExp("^No integrations match “(.+)”\\.$"), "没有集成名称匹配“$1”。"],
     [new RegExp("^A file and folder share the path (.+)\\.$"), "文件和文件夹使用了相同路径：$1。"],
     [new RegExp("^Project actions for (.+)$"), "$1 的项目操作"],
@@ -3998,16 +4056,16 @@
     [new RegExp("^Switches to (.+) on (.+)\\.$"), "将于 $2 切换到 $1。"],
     [new RegExp("^A skill can include at most (\\d+) supporting files\\.$"), "一个技能最多可包含 $1 个辅助文件。"],
     [new RegExp("^Shorten this to (\\d+) characters or fewer\\.$"), "请将内容缩短至 $1 个字符以内。"],
-    [new RegExp("^Details for (.+)$"), "$1 的详情"],
+
     [new RegExp("^Could not load skills: (.+)$"), "无法加载技能：$1"],
     [new RegExp("^Settings not saved: (.+)$"), "设置未保存：$1"],
     [new RegExp("^Could not delete that thread: (.+)$"), "无法删除此任务：$1"],
     [new RegExp("^Uses the saved key at (.+)\\. Each model’s limits are managed separately\\.$"), "使用保存在 $1 的密钥。每个模型的限额分别管理。"],
     [new RegExp("^About the (.+)$"), "关于$1"],
-    [new RegExp("^Step 1 of 2 · Install the (.+) CLI$"), "第 1 步，共 2 步 · 安装 $1 CLI"],
+
     [new RegExp("^Could not install (.+)\\.$"), "无法安装 $1。"],
     [new RegExp("^Confirm disconnecting (.+)$"), "确认断开与 $1 的连接"],
-    [new RegExp("^Downloading Freebuff (.+)$"), "正在下载 Freebuff $1"],
+
     [new RegExp("^What changed in Freebuff (.+)$"), "Freebuff $1 的更新内容"],
     [new RegExp("^You’re on Freebuff (.+)\\.$"), "当前使用 Freebuff $1。"],
     [new RegExp("^Waiting for ([0-9,]+) sessions? to end, the last at (.+)\\.$"), "正在等待 $1 个会话结束，最后一个将在 $2 结束。"],

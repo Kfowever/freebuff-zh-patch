@@ -395,4 +395,24 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   equal(balance.getAttribute('data-tooltip'), refreshedZh, 'stale balance attribute mutation')
   equal(portal.textContent, refreshedZh, 'visible stale balance text mutation')
 }
+{
+  const root = element('main')
+  const modal = element('section', root, { class: 'modal', 'aria-label': 'Stop this sponsored task?' })
+  modal.textContent = 'Quit and stop Settings’s sponsored task?'
+  const chat = element('div', root, { class: 'bubble', title: 'Stop task' })
+  chat.textContent = 'Quit and stop Settings’s sponsored task?'
+  const composer = element('div', root, { class: 'composer-input', 'data-composer-input': '', contenteditable: 'true', 'data-placeholder': 'Freebuff has a question — answer above to continue' })
+  composer.textContent = 'Stop task'
+  root.childNodes.push(modal, chat, composer)
+  const { onMutation } = boot(root)
+  equal(modal.textContent, '退出并停止 Settings 的赞助任务？', '0.9.0 sponsor name preserved in modal')
+  equal(modal.getAttribute('aria-label'), '要停止此赞助任务吗？', '0.9.0 modal accessible label')
+  equal(chat.textContent, 'Quit and stop Settings’s sponsored task?', '0.9.0 modal words in user chat protected')
+  equal(chat.getAttribute('title'), 'Stop task', '0.9.0 user attributes protected')
+  equal(composer.textContent, 'Stop task', '0.9.0 composer draft protected')
+  equal(composer.getAttribute('data-placeholder'), 'Freebuff 有一个问题——请在上方回答以继续', '0.9.0 question composer placeholder')
+  modal.childNodes[0].nodeValue = 'Stop and close session'
+  onMutation([{ type: 'characterData', target: modal.childNodes[0] }])
+  equal(modal.textContent, '停止并关闭会话', '0.9.0 modal update')
+}
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)
