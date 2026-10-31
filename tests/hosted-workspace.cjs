@@ -1,7 +1,5 @@
 const fs=require('fs'),vm=require('vm'),assert=require('assert/strict'),path=require('path');
-const engine=fs.readFileSync(path.join(__dirname,'../FreebuffZhPatch.ps1'),'utf8');
-const original=engine.match(/\$HostedOriginalText = @'\r?\n([\s\S]*?)\r?\n'@/)[1];
-const patched=engine.match(/\$HostedLocalizedText = @'\r?\n([\s\S]*?)\r?\n'@/)[1];assert.equal(Buffer.byteLength(original),Buffer.byteLength(patched));new vm.Script(patched);let assertions=2;
+const profile=JSON.parse(fs.readFileSync(path.join(__dirname,'../library/profiles/0.0.196.0.json'),'utf8'));const original=profile.hostedOriginalText,patched=profile.hostedLocalizedText;assert.equal(Buffer.byteLength(original),Buffer.byteLength(patched));new vm.Script(patched);let assertions=2;
 for(const [url,top,expected]of [['https://freebuff.com/workspace',true,1],['https://staging-auth.freebuff.com/workspace',true,1],['https://staging-2-auth.freebuffweb.site/workspace',true,1],['https://freebuff.com.evil.test/',true,0],['https://evil.test/',true,0],['https://freebuff.com/',false,0],['http://freebuff.com/',true,0],['about:blank',true,0]]){
  let create,load,executions=0;const w={on:(name,cb)=>{if(name==='did-finish-load')load=cb},getURL:()=>url,executeJavaScript:code=>{assert.equal(code,'synthetic-runtime');executions++;return Promise.resolve()}};
  const electron={app:{on:(name,cb)=>{assert.equal(name,'web-contents-created');create=cb}},BrowserWindow:{fromWebContents:()=>top?{}:null}};

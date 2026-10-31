@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Engine = Join-Path $RepoRoot 'FreebuffZhPatch.ps1'
-$Asset = Join-Path $RepoRoot 'freebuff-zh-cn.js'
+$Asset = Join-Path $RepoRoot 'library\freebuff-zh-cn.js'
 $EngineText = [IO.File]::ReadAllText($Engine)
 $OriginalEngine = $Engine
 # Fixtures never launch Freebuff. Stub only the process inventory in test copies
@@ -13,9 +13,12 @@ $OriginalEngine = $Engine
 $processCheck = '$processes = @(Get-Process -Name ''Freebuff'' -ErrorAction SilentlyContinue)'
 if (-not $EngineText.Contains($processCheck)) { throw 'Process inventory test seam changed.' }
 $EngineText = $EngineText.Replace($processCheck, '$processes = @()')
-$AppVersion = [regex]::Match($EngineText, "TestedAppVersion = '([^']+)'").Groups[1].Value
-$PatchVersion = [regex]::Match($EngineText, "PatchVersion = '([^']+)'").Groups[1].Value
-$HostedFixture = [regex]::Match($EngineText, '(?s)\$HostedOriginalText = @''\r?\n(.*?)\r?\n''@').Groups[1].Value
+$LibrarySource = Join-Path $RepoRoot 'library'
+$LibraryMetadata = Get-Content -LiteralPath (Join-Path $LibrarySource 'library.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$AppVersion = [string]$LibraryMetadata.appVersions[0]
+$PatchVersion = [string]$LibraryMetadata.version
+$UpgradeVersion = $PatchVersion + '.1'
+$HostedFixture = (Get-Content -LiteralPath (Join-Path $LibrarySource ("profiles/$AppVersion.json")) -Raw -Encoding UTF8 | ConvertFrom-Json).hostedOriginalText
 $Utf8 = New-Object Text.UTF8Encoding($false)
 $Utf8Bom = New-Object Text.UTF8Encoding($true)
 $TestRoot = [IO.Path]::GetFullPath($TestRoot)
@@ -100,10 +103,6 @@ function New-TestEngine([switch]$Upgrade, [switch]$FailManifest, [switch]$FailRo
     $dir = Join-Path $TestRoot ('engine-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $dir | Out-Null
     $code = $EngineText
-    if ($Upgrade) {
-        $needle = '$PatchVersion = ' + "'$PatchVersion'"
-        $code = $code.Replace($needle, ('$PatchVersion = ' + "'$PatchVersion-test'"))
-    }
     if ($FailManifest) {
         $needle = 'Write-JsonFile -Value $manifest -Path $ManifestPath'
         Assert-True ($code.Contains($needle)) 'manifest fault injection point exists'
@@ -116,7 +115,16 @@ function New-TestEngine([switch]$Upgrade, [switch]$FailManifest, [switch]$FailRo
     }
     $path = Join-Path $dir 'FreebuffZhPatch.ps1'
     [IO.File]::WriteAllText($path, $code, $Utf8Bom)
-    Copy-Item -LiteralPath $Asset -Destination $dir
+    Copy-Item -LiteralPath $LibrarySource -Destination (Join-Path $dir 'library') -Recurse
+    if ($Upgrade) {
+        $metadataPath = Join-Path $dir 'library\library.json'
+        $metadata = Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $metadata.version = $UpgradeVersion
+        $runtime = Join-Path $dir 'library\freebuff-zh-cn.js'
+        [IO.File]::WriteAllText($runtime, [IO.File]::ReadAllText($runtime).Replace($PatchVersion, $UpgradeVersion), $Utf8)
+        $metadata.files.'freebuff-zh-cn.js' = (Get-FileHash $runtime).Hash.ToLowerInvariant()
+        [IO.File]::WriteAllText($metadataPath, ($metadata | ConvertTo-Json -Depth 10), $Utf8)
+    }
     return $path
 }
 
@@ -138,7 +146,7 @@ Assert-True ((Get-Snapshot $clean) -eq $before) 'idempotent install makes no fil
 $upgrade = New-TestEngine -Upgrade
 $result = Invoke-Patch $clean -Script $upgrade
 Assert-True ($result.ExitCode -eq 0) "Unicode path refresh: $($result.Output)"
-Assert-True ((Read-Manifest $clean).PatchVersion -eq "$PatchVersion-test") 'refresh records new patch version'
+Assert-True ((Read-Manifest $clean).PatchVersion -eq "$UpgradeVersion") 'refresh records new patch version'
 $result = Invoke-Patch $clean -Action Restore -Script $upgrade
 Assert-True ($result.ExitCode -eq 0) "Unicode path restore: $($result.Output)"
 Assert-True ((Get-FileHash $clean.Index).Hash -eq $clean.OriginalIndex) 'restore recovers original index'
@@ -261,9 +269,15 @@ Assert-True ((Get-FileHash $migration.Asar).Hash -eq $migration.OriginalAsar) 'm
 
 # Legacy -Force also requires explicit confirmation on an unsupported version.
 $incompatibleEngine = New-TestEngine
-$code = [IO.File]::ReadAllText($incompatibleEngine)
-$code = $code.Replace(('TestedAppVersion = ' + "'$AppVersion'"), "TestedAppVersion = '0.0.999.0'")
-[IO.File]::WriteAllText($incompatibleEngine, $code, $Utf8Bom)
+$incompatibleLibrary = Join-Path (Split-Path -Parent $incompatibleEngine) 'library'
+$metadata = Get-Content -LiteralPath (Join-Path $incompatibleLibrary 'library.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$profile = Get-Content -LiteralPath (Join-Path $incompatibleLibrary "profiles/$AppVersion.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+$profile.appVersion = '0.0.999.0'
+$newProfile = Join-Path $incompatibleLibrary 'profiles/0.0.999.0.json'
+[IO.File]::WriteAllText($newProfile, ($profile | ConvertTo-Json -Depth 10), $Utf8)
+$metadata.appVersions = @('0.0.999.0')
+$metadata.files = [PSCustomObject]@{'freebuff-zh-cn.js' = $metadata.files.'freebuff-zh-cn.js'; 'profiles/0.0.999.0.json' = (Get-FileHash $newProfile).Hash.ToLowerInvariant()}
+[IO.File]::WriteAllText((Join-Path $incompatibleLibrary 'library.json'), ($metadata | ConvertTo-Json -Depth 10), $Utf8)
 foreach ($force in @($false, $true)) {
     $fixture = New-Fixture ('incompatible-' + $force)
     $before = Get-Snapshot $fixture

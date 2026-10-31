@@ -3,7 +3,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
 const context = { Node: {}, NodeFilter: {}, document: { readyState: 'loading', addEventListener() {} } }
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'freebuff-zh-cn.js'), 'utf8'), context)
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '..', 'library/freebuff-zh-cn.js'), 'utf8'), context)
 const { translate, version } = context.__FREEBUFF_ZH_PATCH__
 assert.equal(version, '0.10.1')
 const cases = [

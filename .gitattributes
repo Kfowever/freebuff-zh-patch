@@ -1,0 +1,4 @@
+# Keep checkout bytes deterministic because manifests hash the installed files.
+* text=auto eol=lf
+# CMD entry points retain their existing CRLF bytes in archives as well.
+*.cmd -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

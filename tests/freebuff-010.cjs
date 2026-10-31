@@ -1,4 +1,4 @@
-const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');const c={Node:{},NodeFilter:{},document:{readyState:'loading',addEventListener(){}}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../freebuff-zh-cn.js'),'utf8'),c);const cases=[
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');const c={Node:{},NodeFilter:{},document:{readyState:'loading',addEventListener(){}}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../library/freebuff-zh-cn.js'),'utf8'),c);const cases=[
   [
     "The reply ended.",
     "回复已结束。"

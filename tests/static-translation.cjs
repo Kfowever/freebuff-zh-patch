@@ -14,7 +14,7 @@ global.document = {
   addEventListener() {},
 }
 
-const patchPath = process.argv[2] ?? require('node:path').join(__dirname, '..', 'freebuff-zh-cn.js')
+const patchPath = process.argv[2] ?? require('node:path').join(__dirname, '..', 'library/freebuff-zh-cn.js')
 vm.runInThisContext(fs.readFileSync(patchPath, 'utf8'), { filename: patchPath })
 const translate = global.__FREEBUFF_ZH_PATCH__.translate
 

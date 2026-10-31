@@ -11,44 +11,19 @@ param(
 
     [switch]$Interactive,
 
-    [switch]$CloseRunningApp
+    [switch]$CloseRunningApp,
+
+    [string]$LibraryDir = ''
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
-$PatchVersion = '0.10.1'
-$TestedAppVersion = '0.0.196.0'
+$InstallerVersion = '0.11.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
-$StartupOriginalText = 'Starting Freebuff orchestrator…'
-$StartupLocalizedText = 'Freebuff 编排器正在启动…'
-$HostedOriginalText = @'
-/**
- * Freebuff — Electron main process (the shell side of the
- * Electron-shell + Bun-orchestrator split described in the README).
- *
- * Electron's main process runs Node, not Bun. To honor "Bun main process"
- * (reuse sdk/ + agent-runtime, which export Bun-targeted TS) the shell spawns
- * the Bun orchestrator as a child process and talks to it over local HTTP/SSE
- * on 127.0.0.1. The renderer is the existing self-contained UI the Bun server
- * serves, so there is no separate renderer build step.
- *
- * Two run modes, see resolveOrchestrator():
- *   - dev: spawn a system `bun` on the TS source (src/server/main.ts).
- *   - packaged: spawn the Bun binary shipped in app resources on the pre-bundled
- *     orchestrator.js (scripts/fetch-bun.ts + scripts/build-orchestrator.ts,
- *     wired into the app via the electron-builder extraResources config). The
- *     user needs no system Bun.
- *
- *   bun --cwd freebuff-desktop run app        # launch from source (dev)
- */
-'@
-$HostedLocalizedText = @'
-/*FREEBUFF_ZH_HOSTED*/queueMicrotask(()=>{const{app,BrowserWindow}=require('electron');const fs=require('node:fs'),path=require('node:path');app.on('web-contents-created',(_,w)=>{w.on('did-finish-load',()=>{try{if(!BrowserWindow.fromWebContents(w)||!['https://staging-2-auth.freebuffweb.site','https://staging-auth.freebuff.com','https://freebuff.com'].includes(new URL(w.getURL()).origin))return;const p=path.join(process.resourcesPath,'orchestrator','ui','assets','freebuff-zh-cn.js');w.executeJavaScript(fs.readFileSync(p,'utf8')).catch(e=>console.warn('Freebuff Chinese patch:',e.message))}catch(e){console.warn('Freebuff Chinese patch:',e.message)}})})});/*...........................................................................................................................................................................................................................................................................................................................................*/
-'@
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 function Get-Sha256 {
@@ -292,8 +267,8 @@ function Get-StartupPatchInfo {
         throw '启动界面译文的 UTF-8 字节长度必须与原文相同。已停止操作以避免损坏 app.asar。'
     }
     $data = [IO.File]::ReadAllBytes($Path)
-    $hostOriginal = @(Find-BytePatternOffsets -Data $data -Pattern ([Text.Encoding]::UTF8.GetBytes($HostedOriginalText)))
-    $hostPatched = @(Find-BytePatternOffsets -Data $data -Pattern ([Text.Encoding]::UTF8.GetBytes($HostedLocalizedText)))
+    $hostOriginal = @(if ($HostedPatchEnabled) { Find-BytePatternOffsets -Data $data -Pattern ([Text.Encoding]::UTF8.GetBytes($HostedOriginalText)) })
+    $hostPatched = @(if ($HostedPatchEnabled) { Find-BytePatternOffsets -Data $data -Pattern ([Text.Encoding]::UTF8.GetBytes($HostedLocalizedText)) })
     $sourceOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $sourceBytes)
     $targetOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $targetBytes)
     $state = if (($sourceOffsets.Count -eq 1) -and ($targetOffsets.Count -eq 0)) {
@@ -303,8 +278,8 @@ function Get-StartupPatchInfo {
     } else {
         'Unknown'
     }
-    if (($state -eq 'Unpatched' -and ($hostOriginal.Count -ne 1 -or $hostPatched.Count -ne 0)) -or
-        ($state -eq 'Patched' -and ($hostOriginal.Count -ne 0 -or $hostPatched.Count -ne 1))) { $state = 'Unknown' }
+    if ($HostedPatchEnabled -and (($state -eq 'Unpatched' -and ($hostOriginal.Count -ne 1 -or $hostPatched.Count -ne 0)) -or
+        ($state -eq 'Patched' -and ($hostOriginal.Count -ne 0 -or $hostPatched.Count -ne 1)))) { $state = 'Unknown' }
     return [PSCustomObject]@{
         State = $state
         OriginalCount = $sourceOffsets.Count
@@ -328,11 +303,13 @@ function New-PatchedStartupAsar {
     if (($sourceOffsets.Count -ne 1) -or ($targetOffsets.Count -ne 0)) {
         throw "启动文本布局与预期不符（原文=$($sourceOffsets.Count)，译文=$($targetOffsets.Count)）。未修改 app.asar；请确认应用版本及译文后重试。"
     }
+    if ($HostedPatchEnabled) {
     $hostSource = [Text.Encoding]::UTF8.GetBytes($HostedOriginalText)
     $hostTarget = [Text.Encoding]::UTF8.GetBytes($HostedLocalizedText)
     $hostOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $hostSource)
     if ($hostSource.Length -ne $hostTarget.Length -or $hostOffsets.Count -ne 1) { throw '在线工作区注入位置未知，未修改应用。' }
     [Array]::Copy($hostTarget, 0, $data, $hostOffsets[0], $hostTarget.Length)
+    }
     [Array]::Copy($targetBytes, 0, $data, $sourceOffsets[0], $targetBytes.Length)
     [IO.File]::WriteAllBytes($Destination, $data)
     $verification = Get-StartupPatchInfo -Path $Destination
@@ -389,7 +366,9 @@ $UiDir = Join-Path $AppDir 'resources\orchestrator\ui'
 $IndexPath = Join-Path $UiDir 'index.html'
 $AssetsDir = Join-Path $UiDir 'assets'
 $InstalledPatchAsset = Join-Path $AssetsDir $PatchAssetName
-$SourcePatchAsset = Join-Path $PSScriptRoot $PatchAssetName
+if ([string]::IsNullOrWhiteSpace($LibraryDir)) { $LibraryDir = Join-Path $PSScriptRoot 'library' }
+$LibraryDir = [IO.Path]::GetFullPath($LibraryDir)
+$SourcePatchAsset = Join-Path $LibraryDir $PatchAssetName
 if ([string]::IsNullOrWhiteSpace($StateDir)) {
     $StateRoot = Join-Path $env:LOCALAPPDATA 'FreebuffZhPatch'
 } else {
@@ -415,6 +394,31 @@ $CurrentVersion = Get-AppVersion -ExePath $ExePath
 if ([string]::IsNullOrWhiteSpace([string]$CurrentVersion)) {
     throw '无法读取 Freebuff.exe 的 ProductVersion。由于无法确认兼容性，已阻止安装和还原；请检查应用文件后重试。'
 }
+$Library = Get-Content -LiteralPath (Join-Path $LibraryDir 'library.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($Library.schemaVersion -ne 1 -or [string]$Library.version -notmatch '^\d+\.\d+\.\d+(?:\.\d+)?$' -or [version]$Library.minInstallerVersion -gt [version]$InstallerVersion) { throw '翻译库格式或最低安装器版本不兼容，请更新安装器。' }
+$PatchVersion = [string]$Library.version
+$SupportedVersions = @($Library.appVersions)
+if ($SupportedVersions.Count -eq 0) { throw '翻译库没有声明支持的 Freebuff 版本。' }
+foreach ($version in $SupportedVersions) { if ([string]$version -notmatch '^\d+\.\d+\.\d+\.\d+$') { throw '翻译库的兼容版本无效。' } }
+$ExpectedFiles = @('freebuff-zh-cn.js') + @($SupportedVersions | ForEach-Object { "profiles/$_.json" })
+if (@($Library.files.PSObject.Properties).Count -ne $ExpectedFiles.Count) { throw '翻译库文件清单不完整。' }
+foreach ($name in $ExpectedFiles) {
+    $expected = Get-PropertyValue -InputObject $Library.files -Name $name
+    if ([string]$expected -notmatch '^[a-fA-F0-9]{64}$' -or (Get-Sha256 -Path (Join-Path $LibraryDir $name)) -ne $expected) { throw "翻译库文件校验失败：$name。未修改应用。" }
+}
+$TestedAppVersion = if ($SupportedVersions -contains $CurrentVersion) { $CurrentVersion } else { [string]$SupportedVersions[0] }
+$Profile = Get-Content -LiteralPath (Join-Path $LibraryDir "profiles/$TestedAppVersion.json") -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($Profile.schemaVersion -ne 1 -or $Profile.appVersion -ne $TestedAppVersion -or $Profile.mode -notin @('hosted', 'local')) { throw '翻译库适配数据不匹配。' }
+$StartupOriginalText = [string]$Profile.startupOriginalText
+$StartupLocalizedText = [string]$Profile.startupLocalizedText
+$HostedPatchEnabled = $Profile.mode -eq 'hosted'
+$HostedOriginalText = if ($HostedPatchEnabled) { [string]$Profile.hostedOriginalText } else { '' }
+$HostedLocalizedText = if ($HostedPatchEnabled) { [string]$Profile.hostedLocalizedText } else { '' }
+if ($HostedPatchEnabled -and ([string]::IsNullOrEmpty($HostedOriginalText) -or [Text.Encoding]::UTF8.GetByteCount($HostedOriginalText) -ne [Text.Encoding]::UTF8.GetByteCount($HostedLocalizedText))) { throw '在线工作区适配数据长度错误。' }
+$runtimeText = [IO.File]::ReadAllText($SourcePatchAsset)
+$runtimeVersion = [regex]::Match($runtimeText, "const PATCH_VERSION = '([^']+)'").Groups[1].Value
+if ($runtimeVersion -ne $PatchVersion) { throw '翻译库版本与界面脚本版本不一致。' }
+
 $CurrentIndexText = [IO.File]::ReadAllText($IndexPath)
 $HasMarker = $CurrentIndexText.Contains($PatchMarkerStart)
 $MainAsset = Get-MainAssetInfo -IndexText $CurrentIndexText -UiDir $UiDir
@@ -436,6 +440,7 @@ $InjectedPatchVersion = if ($InjectedPatchVersionMatch.Success) { $InjectedPatch
 $ManifestInstalled = [bool](Get-PropertyValue -InputObject $manifest -Name 'Installed')
 $ManifestAppVersion = Get-PropertyValue -InputObject $manifest -Name 'AppVersion'
 $ManifestPatchVersion = Get-PropertyValue -InputObject $manifest -Name 'PatchVersion'
+$ManifestInstallerVersion = Get-PropertyValue -InputObject $manifest -Name 'InstallerVersion'
 $ManifestBackupDir = Get-PropertyValue -InputObject $manifest -Name 'BackupDir'
 $ManifestStartupPatchEnabled = [bool](Get-PropertyValue -InputObject $manifest -Name 'StartupPatchEnabled')
 $ManifestMainAssetName = Get-PropertyValue -InputObject $manifest -Name 'MainAssetName'
@@ -455,6 +460,7 @@ if ($HasMarker -and $PatchAssetPresent) {
         $PatchState = 'InstalledForOtherVersion'
     } elseif (
         ($ManifestPatchVersion -eq $PatchVersion) -and
+        ($ManifestInstallerVersion -eq $InstallerVersion) -and
         ($InjectedPatchVersion -eq $PatchVersion) -and
         ($InstalledPatchHash -eq $SourcePatchHash) -and
         ($InstalledPatchHash -eq $ManifestPatchedAssetHash) -and
@@ -494,6 +500,8 @@ if ($Action -eq 'Status') {
         TestedAppVersion = $TestedAppVersion
         VersionCompatible = $VersionCompatible
         PatchVersion = $PatchVersion
+        InstallerVersion = $InstallerVersion
+        LibraryDirectory = $LibraryDir
         PatchState = $PatchState
         MainAsset = $MainAsset.Name
         MainAssetHash = $MainAsset.Hash
@@ -748,6 +756,8 @@ if ($HasMarker) {
             throw '刷新后未检测到启动译文。已停止操作；请检查安装结果或从备份还原后重试。'
         }
         $manifest.PatchVersion = $PatchVersion
+        $manifest | Add-Member -NotePropertyName 'InstallerVersion' -NotePropertyValue $InstallerVersion -Force
+        $manifest | Add-Member -NotePropertyName 'LibraryDirectory' -NotePropertyValue $LibraryDir -Force
         $manifest.MainAssetName = $MainAsset.Name
         $manifest.MainAssetHash = $MainAsset.Hash
         $manifest.PatchedIndexHash = Get-Sha256 -Path $IndexPath
@@ -886,6 +896,8 @@ try {
     $manifest = [ordered]@{
         Installed = $true
         PatchVersion = $PatchVersion
+        InstallerVersion = $InstallerVersion
+        LibraryDirectory = $LibraryDir
         InstalledAt = (Get-Date).ToString('o')
         RefreshedAt = $null
         RestoredAt = $null

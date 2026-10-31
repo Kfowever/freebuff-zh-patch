@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
-const context={Node:{},NodeFilter:{},document:{readyState:'loading',addEventListener(){}}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../freebuff-zh-cn.js'),'utf8'),context);const t=context.__FREEBUFF_ZH_PATCH__.translate;
+const context={Node:{},NodeFilter:{},document:{readyState:'loading',addEventListener(){}}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../library/freebuff-zh-cn.js'),'utf8'),context);const t=context.__FREEBUFF_ZH_PATCH__.translate;
 const cases=[
  ['Chats','聊天'],['Browser','浏览器'],['Updates','更新'],['Subscriber role','订阅者角色'],['Not active','未激活'],
  ['Connect your GitHub account','连接你的 GitHub 账户'],['Manage on web','在网页上管理'],['Type','类型'],

@@ -7,5 +7,7 @@
 *.log
 .env
 .env.*
+*signing-key*
+*.private.xml
 backups/
 work/

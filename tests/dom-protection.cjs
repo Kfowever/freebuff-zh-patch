@@ -3,7 +3,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const vm = require('node:vm')
-const source = fs.readFileSync(path.join(__dirname, '..', 'freebuff-zh-cn.js'), 'utf8')
+const source = fs.readFileSync(path.join(__dirname, '..', 'library/freebuff-zh-cn.js'), 'utf8')
 let assertions = 0
 const equal = (actual, expected, label) => { assert.equal(actual, expected, label); assertions++ }
 

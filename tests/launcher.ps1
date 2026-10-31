@@ -65,13 +65,13 @@ Remove-Item Function:\Get-Process
 $entry = Join-Path $TestRoot '中文 & launcher'
 New-Item -ItemType Directory -Path $entry | Out-Null
 $stub = @'
-param([string]$Action, [switch]$Interactive, [switch]$CloseRunningApp, [string]$AppDir, [int]$Result=0)
+param([string]$Action, [switch]$Interactive, [string]$AppDir, [int]$Result=0)
 [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false)
-if (-not $Interactive -or -not $CloseRunningApp -or $AppDir -ne '带空格 & 路径') { exit 90 }
+if (-not $Interactive -or $AppDir -ne '带空格 & 路径') { exit 90 }
 Write-Host "中文入口参数正确：$Action"
 exit $Result
 '@
-[IO.File]::WriteAllText((Join-Path $entry 'FreebuffZhPatch.ps1'), $stub, $bom)
+[IO.File]::WriteAllText((Join-Path $entry 'FreebuffZhSetup.ps1'), $stub, $bom)
 foreach ($name in @('一键汉化.cmd', '还原英文.cmd', 'Install-Freebuff-Zh.cmd', 'Restore-Freebuff-Zh.cmd')) {
     Copy-Item -LiteralPath (Join-Path $repo $name) -Destination $entry
     foreach ($code in @(0, 1, 3)) {

@@ -1,6 +1,6 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm')
 const assert = require('node:assert/strict')
-const source = fs.readFileSync(path.join(__dirname, '../freebuff-zh-cn.js'), 'utf8')
+const source = fs.readFileSync(path.join(__dirname, '../library/freebuff-zh-cn.js'), 'utf8')
 const context = { Node: {}, NodeFilter: {}, document: { readyState: 'loading', addEventListener() {} } }
 vm.runInNewContext(source
   .replace('const exact = new Map(', 'const exact = globalThis.__exact = new Map(')

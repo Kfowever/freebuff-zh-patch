@@ -1,0 +1,18 @@
+{
+    "schemaVersion":  1,
+    "version":  "0.11.0",
+    "files":  {
+                  "FreebuffZhSetup.ps1":  "74e23ca04fc08e35a9f7a3df01a176dc2ec34d6d20dc860ea91a0412ec0ad5fc",
+                  "FreebuffZhAssistant.psm1":  "e7b865f0a0788f31f8dad6daef1935bc98a29fd0a3082eaf82cc1b2179f75c37",
+                  "FreebuffZhPatch.ps1":  "8f2136d0e86b59ac3891ed57981a8c8a20c92cbdf61d98f3bafc986030f6c0b5",
+                  "一键汉化.cmd":  "233416dc9971b10be46539f4e6f0d2d8d0c52c26c9aeac6bb9d4915cbccec7fd",
+                  "还原英文.cmd":  "79e1ae47b403bb32a7d3979452baa294113f2063ddd3f6986ed1562a94273738",
+                  "检查更新.cmd":  "3f13a0a90f20e19d7f2b7ca263261278c10be7cb9a7bc27fbfde55dcac726f9d",
+                  "汉化管理.cmd":  "cfb5f769467303b137294193cbc784275c58482a0dd4531cc9d166a06b98dc7c",
+                  "关闭自动更新.cmd":  "5e3cf410267f927ed119b77d704c34d16aef304f8b2c5767ab8b8833dad3ad5f",
+                  "Install-Freebuff-Zh.cmd":  "233416dc9971b10be46539f4e6f0d2d8d0c52c26c9aeac6bb9d4915cbccec7fd",
+                  "Restore-Freebuff-Zh.cmd":  "79e1ae47b403bb32a7d3979452baa294113f2063ddd3f6986ed1562a94273738",
+                  "README.md":  "80737e82c9f410c44fd15641b1847bf7b5f171420517ca4246131e2e8bdcf3c7",
+                  "LICENSE":  "1f305ff908a4b961e9f7a6a4e42a9246039c11bc938e46c09c193d869352f9f4"
+              }
+}

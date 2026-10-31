@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "version": "0.10.1",
+  "minInstallerVersion": "0.11.0",
+  "appVersions": [
+    "0.0.196.0"
+  ],
+  "files": {
+    "freebuff-zh-cn.js": "48fa68dea7cc23a15c24512870654dfd936e4b6615ca9b41114c72e56c192f28",
+    "profiles/0.0.196.0.json": "2716c4473a112dc61fa55f50aa030719ccdc212d7aa31031e65699a47083ecb0"
+  }
+}

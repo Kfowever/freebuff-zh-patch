@@ -16,9 +16,17 @@ node tests/translation-integrity.cjs
 node tests/dom-protection.cjs
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/installer.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/launcher.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1 -OutputDir D:\临时打包目录 -SigningKey 私钥路径
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/updater.ps1 -PackageDir D:\临时打包目录
 ```
 
 测试不依赖第三方 Node 包。安装器测试需要 Windows PowerShell 5.1，使用临时目录中的合成版本文件与启动字符串载体，不修改实际安装。测试副本会模拟应用已关闭；生产安装器的进程检查保持启用。测试覆盖中文路径、刷新前的文件及备份校验、安装/刷新/还原失败，以及回滚失败时保留恢复副本。测试目录保留供排查。
+
+安装器与库分别由 `installer.json`、`library/library.json` 管理；界面运行脚本位于 `library/freebuff-zh-cn.js`。打包输出目录必须是新的目录，避免覆盖已生成的发布附件。修改安装器源码后先重新打包，再执行更新器测试。
+
+`updater.ps1` 覆盖精确版本匹配、独立库与安装器下载、SHA-256 校验、缓存与断网、下载中断、非法 ZIP、并发锁、应用更新期间重新匹配、运行中暂缓、退出后应用、自更新交接及失败保留、禁止降级和还原关闭自动更新。网络请求与注册表使用隔离替身，后台进程仅运行测试副本，不修改真实启动项，也不关闭本机 Freebuff。这些检查验证程序流程，不代表 GitHub 已经发布新清单或完成真实界面的端到端验证。
+
+镜像检查覆盖官方失败后依次回退、低速判断、首个镜像内容错误继续切换、全部线路失败、清单签名被篡改与缺失签名拒绝。所有下载线路使用相同的校验逻辑，不因切换镜像放宽验证。
 
 `dom-protection.cjs` 使用 DOM 桩，验证用户内容保护、输入框提示、嵌套执行标签及动态更新、工具标签和引用按钮，同时覆盖固定消息摘要、长消息展开控件、自定义服务商名称及 API 输入值保护。0.0.190 新增对任务和项目名称、推理摘要、问答选项、编辑器与差异视图的动态保护验证；0.9.0 补充赞助任务确认和问答输入提示。
 

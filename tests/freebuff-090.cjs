@@ -1,7 +1,7 @@
 const fs = require('node:fs'), path = require('node:path'), vm = require('node:vm')
 const assert = require('node:assert/strict')
 const context = {Node:{}, NodeFilter:{}, document:{readyState:'loading',addEventListener(){}}}
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../freebuff-zh-cn.js'),'utf8'),context)
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../library/freebuff-zh-cn.js'),'utf8'),context)
 const t=context.__FREEBUFF_ZH_PATCH__.translate
 const cases=[
   [

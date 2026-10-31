@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict')
 const fs = require('node:fs'), vm = require('node:vm'), path = require('node:path')
 const context = {Node:{}, NodeFilter:{}, document:{readyState:'loading', addEventListener(){}}}
-vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../freebuff-zh-cn.js'), 'utf8'), context)
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../library/freebuff-zh-cn.js'), 'utf8'), context)
 const t = context.__FREEBUFF_ZH_PATCH__.translate
 const guide = 'Balances now read in hours instead of Freebucks: 1 hour = 5 Freebucks, an hour on MiMo v2.6 Flash Slow. Nothing was taken from your balance, and a 3x model uses 3 hours per session hour.'
 const guideZh = '余额现在以小时而非 Freebucks 显示：每 1 小时 = 5 Freebucks；在 MiMo v2.6 Flash Slow 上运行 1 小时。余额没有被扣除，而 3 倍耗用模型每运行 1 小时会消耗 3 小时额度。'

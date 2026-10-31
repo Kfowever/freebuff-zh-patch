@@ -1,47 +1,46 @@
-# Freebuff 汉化补丁 · Windows 简体中文
+# Freebuff 汉化助手 · Windows 简体中文
 
 [![最新版本](https://img.shields.io/github/v/release/Kfowever/freebuff-zh-patch)](https://github.com/Kfowever/freebuff-zh-patch/releases/latest)
-[![平台](https://img.shields.io/badge/Windows-简体中文-blue)](#支持版本)
-[![许可证](https://img.shields.io/github/license/Kfowever/freebuff-zh-patch)](LICENSE)
 
-为 **Freebuff Windows 桌面版**提供中文界面的非官方汉化补丁。支持一键安装、自动备份和还原英文，不包含 Freebuff 本体。
+为 Freebuff Windows 桌面版提供非官方中文界面。**安装一次，以后随 Freebuff 版本自动检查匹配的翻译库。**
 
-**[下载 0.10.1 汉化补丁 ZIP](https://github.com/Kfowever/freebuff-zh-patch/releases/download/v0.10.1/Freebuff-Zh-Patch-0.10.1.zip)** · [查看最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
+**[下载最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest)** · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
 
 ## 三步安装
 
 1. 先安装 [Freebuff 官方桌面版](https://freebuff.com/)，保存工作。
-2. 下载上方补丁 ZIP，右键选择“全部解压”。**请勿在压缩包中直接运行。**
-3. 双击 **`一键汉化.cmd`**，看到“操作完成”后重新打开 Freebuff。
+2. 下载 **Offline 离线整合包**并“全部解压”；也可下载体积更小的 **Installer 安装器**，由它联网下载翻译库。
+3. 双击 **一键汉化.cmd**。完成后重新打开 Freebuff。
 
-安装器会自动查找 Freebuff，并尝试正常关闭应用。如应用弹出退出确认，请先处理；自定义安装位置未找到时，会弹窗让你选择 `Freebuff.exe`。正常安装不需要英文命令或管理员权限。
+无需英文命令或管理员权限。助手会复制到用户目录，默认启用登录启动和自动检查；安装后可以删除解压目录。
 
-需要恢复英文时，双击 **`还原英文.cmd`**。旧英文命名入口仍在源码中保留。
+## 自动更新怎么用？
 
-## 支持版本
+Freebuff 更新后，助手会查询本项目 GitHub 兼容清单，下载明确匹配版本的翻译库并校验。应用正在运行时先准备好，**正常退出后自动应用，不强制关闭**。没有适配时显示中文提示，可点击查看发布或反馈 Issue；联网失败时会提示检查失败，不会误报“尚未适配”。
 
-- 补丁：**0.10.1**；已验证 **Freebuff 0.0.196.0，Windows x64**。
-- 其他 Freebuff 版本和 Windows 架构未经验证；不支持网页版、macOS、Linux。
-- 版本不匹配时会显示中文风险提示，默认取消；只有主动输入 `y` 才会尝试安装。
+官方下载连接超时或持续低速时，自动依次尝试两个国内可访问的加速镜像；清单验证发布签名，安装包验证 SHA-256，全部线路失败后才提示下载失败。
 
-## 0.10.1 更新
+- **检查更新.cmd**：立即检查并准备更新。
+- **汉化管理.cmd**：查看状态、打开发布页或 Issue 页面。
+- **关闭自动更新.cmd**：关闭后台检查和登录启动，保留已有汉化。
+- **还原英文.cmd**：还原应用，同时关闭自动更新。
 
-- 补齐按需加载的账户、账单、用量、奖励、模型服务商和身份验证等设置文案。
-- 修复地区说明、Discord 奖励、套餐价格与额度、充值及付款提示中的漏翻和中英混排。
-- 继续支持 0.0.196 在线工作区、中文一键安装、备份和还原。
+## 安装器和翻译库独立
 
-## 常见问题
+| 项目 | 当前版本 |
+| --- | --- |
+| 安装器 / 更新助手 | **0.11.0** |
+| 翻译库 | **0.10.1** |
+| 当前明确支持的应用 | **Freebuff 0.0.196.0，Windows x64** |
 
-**更新 Freebuff 后又变成英文？** 下载匹配新版的补丁，再双击“一键汉化.cmd”。不要将旧版应用备份覆盖到新版上。
-
-**安装未完成？** 查看窗口中的中文原因。提示仍在运行时，完全退出 Freebuff 后重试；提示文件缺失时，重新下载并完整解压。仍有问题请[提交反馈](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)，附上版本和提示内容。
-
-**还有少量英文？** 品牌、模型、命令、路径及用户内容保留原文，远程工具输出不保证翻译。界面漏翻可[反馈原文和位置](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)，截图请遮盖个人信息。
+Installer 包只带安装和更新程序；Library 包只带译文与版本适配数据。普通用户使用 Offline 包最方便，后续只需自动下载有变化的部分；需要新版安装器时，助手也会单独校验并切换。
 
 ## 备份与隐私
 
-安装前自动备份并校验文件，失败时尝试回滚。备份保存在 `%LOCALAPPDATA%\FreebuffZhPatch`，还原时会检查应用版本，避免覆盖新版文件。补丁不联网、不上传文件，不修改账号、会话或项目数据。
+安装前备份并校验，失败时尝试回滚。文件保存在 `%LOCALAPPDATA%\FreebuffZhPatch`，保留历史版本和备份，不把旧版应用文件恢复到新版。自动更新不强装不匹配版本，也不自动降级。
 
-[高级用法](docs/installation.md) · [贡献译文](CONTRIBUTING.md) · [开发验证](https://github.com/Kfowever/freebuff-zh-patch/blob/main/tests/README.md) · [MIT 许可证](LICENSE)
+只有更新助手会向本项目 GitHub 获取清单与补丁；界面译文脚本不联网，不上传账号、项目或聊天数据。品牌、模型、代码、路径及用户内容保留原文。其他平台和架构未经验证。
 
-Unofficial **Freebuff Chinese localization / Simplified Chinese language pack for Windows**. Freebuff 及其商标、软件版权归各自权利人所有。
+[高级用法与发布维护](docs/installation.md) · [贡献译文](CONTRIBUTING.md) · [开发验证](tests/README.md) · [MIT 许可证](LICENSE)
+
+Unofficial Freebuff Chinese localization / Simplified Chinese language pack for Windows. Freebuff 及其商标、软件版权归各自权利人所有。

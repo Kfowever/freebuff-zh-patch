@@ -12,10 +12,17 @@ body:
   - type: input
     id: patch-version
     attributes:
-      label: 汉化补丁版本
+      label: 翻译库版本
       placeholder: 例如 0.10.1
     validations:
       required: true
+  - type: input
+    id: installer-version
+    attributes:
+      label: 安装器版本（可选）
+      placeholder: 例如 0.11.0，可从汉化管理查看
+    validations:
+      required: false
   - type: input
     id: location
     attributes:
