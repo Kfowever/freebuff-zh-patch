@@ -130,7 +130,7 @@ function Test-ZhInstaller([string]$Root, [string]$ExpectedVersion = '') {
     [void](Assert-ZhVersion ([string]$metadata.version))
     if ($metadata.schemaVersion -ne 1 -or ($ExpectedVersion -and $metadata.version -cne $ExpectedVersion)) { throw '安装器版本或格式不匹配。' }
     $required = @('FreebuffZhSetup.ps1', 'FreebuffZhAssistant.psm1', 'FreebuffZhPatch.ps1')
-    $allowed = $required + @('一键汉化.cmd', '还原英文.cmd', '检查更新.cmd', '汉化管理.cmd', '关闭自动更新.cmd', 'Install-Freebuff-Zh.cmd', 'Restore-Freebuff-Zh.cmd', 'README.md', 'LICENSE')
+    $allowed = $required + @('安装.cmd', '恢复英文.cmd', '检查更新.cmd', '查看状态.cmd', '关闭自动更新.cmd', 'Install-Freebuff-Zh.cmd', 'Restore-Freebuff-Zh.cmd', 'README.md', 'LICENSE')
     foreach ($name in $required) { if (-not (Get-ZhValue $metadata.files $name)) { throw '安装器缺少必要文件。' } }
     foreach ($property in $metadata.files.PSObject.Properties) {
         if ($allowed -cnotcontains $property.Name -or [string]$property.Value -notmatch '^[a-fA-F0-9]{64}$' -or
@@ -145,7 +145,7 @@ function Expand-ZhArchive([string]$Archive, [string]$Destination, [ValidateSet('
     try {
         if ($zip.Entries.Count -lt 2 -or $zip.Entries.Count -gt 40) { throw '安装包的文件数量异常。' }
         $seen = @{}; $total = [long]0
-        $installerFiles = @('installer.json','FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','一键汉化.cmd','还原英文.cmd','检查更新.cmd','汉化管理.cmd','关闭自动更新.cmd','Install-Freebuff-Zh.cmd','Restore-Freebuff-Zh.cmd','README.md','LICENSE')
+        $installerFiles = @('installer.json','FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','安装.cmd','恢复英文.cmd','检查更新.cmd','查看状态.cmd','关闭自动更新.cmd','Install-Freebuff-Zh.cmd','Restore-Freebuff-Zh.cmd','README.md','LICENSE')
         foreach ($entry in $zip.Entries) {
             $name = $entry.FullName
             $permitted = if ($Kind -eq 'library') { $name -cin @('library.json','freebuff-zh-cn.js') -or $name -cmatch '^profiles/\d+\.\d+\.\d+\.\d+\.json$' } else { $installerFiles -ccontains $name }

@@ -2,7 +2,7 @@
 
 ## 日常入口
 
-`一键汉化.cmd` 安装或更新助手；`检查更新.cmd` 检查匹配版本；`汉化管理.cmd` 查看状态；`关闭自动更新.cmd` 关闭后台检查与登录启动；`还原英文.cmd` 先关闭自动更新，再还原文件。旧英文入口仍保留。
+`安装.cmd` 安装或更新助手；`检查更新.cmd` 检查匹配版本；`查看状态.cmd` 查看状态；`关闭自动更新.cmd` 关闭后台检查与登录启动；`恢复英文.cmd` 先关闭自动更新，再还原文件。源码中仍保留旧英文入口。
 
 首次安装将程序复制到 `%LOCALAPPDATA%\FreebuffZhPatch\assistant\versions\安装器版本`，翻译库放在 `libraries\翻译库版本`。登录启动只使用当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 中的 `FreebuffZhAssistant`，不需要管理员权限。关闭后，驻留进程在一分钟内退出。历史程序、翻译库和应用备份均保留。
 

@@ -55,7 +55,7 @@ Assert ($text.Contains($needle)) 'shipping process guard seam exists'
 $metadata.files.'FreebuffZhPatch.ps1'=Get-ZhHash $enginePath
 $isolatedStartup=@'
 function Set-ZhStartup([string]$SourceRoot,[string]$AppDir,[string]$StateRoot,[bool]$Enabled) {
-    Write-ZhJson @{enabled=$Enabled;appDir=$AppDir;installerRoot=$SourceRoot;installerVersion='0.11.0'} (Join-Path $StateRoot 'assistant-config.json')
+    Write-ZhJson @{enabled=$Enabled;appDir=$AppDir;installerRoot=$SourceRoot;installerVersion='0.11.1'} (Join-Path $StateRoot 'assistant-config.json')
 }
 Export-ModuleMember -Function *-Zh*
 '@
@@ -99,7 +99,7 @@ Assert (Test-Path -LiteralPath (Join-Path $state 'libraries\0.10.1\library.json'
 $result=Check $app $state
 Assert ($result.state -eq 'Applied') "exit then apply: $($result.message)"
 $installed=Read-ZhJson (Join-Path $state 'manifest.json')
-Assert ($installed.InstallerVersion -eq '0.11.0' -and $installed.PatchVersion -eq '0.10.1') 'installer and library versions are independent'
+Assert ($installed.InstallerVersion -eq '0.11.1' -and $installed.PatchVersion -eq '0.10.1') 'installer and library versions are independent'
 $after=Snapshot $app;$result=Check $app $state
 Assert ($result.state -eq 'Current') "idempotent current status: $($result.message)"
 Assert ((Snapshot $app) -eq $after) 'current check leaves installed files unchanged'
@@ -198,7 +198,7 @@ $failedCatalog.installer.sha256=Get-ZhHash $failedZip;$failedCatalog.installer.s
 $failedCatalog.installer.manifestSha256=Get-ZhHash (Join-Path $failedRoot 'installer.json')
 $failedIndex=Join-Path $nextPackageDir 'failed-catalog.json';Write-ZhJson $failedCatalog $failedIndex
 $failedState=Join-Path $TestRoot 'state-failed-handoff'
-Write-ZhJson @{enabled=$true;installerRoot=$source;appDir=$app;installerVersion='0.11.0'} (Join-Path $failedState 'assistant-config.json')
+Write-ZhJson @{enabled=$true;installerRoot=$source;appDir=$app;installerVersion='0.11.1'} (Join-Path $failedState 'assistant-config.json')
 $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Check -AppDir $app -StateDir $failedState -CatalogPath $failedIndex 2>&1
 Assert ($LASTEXITCODE -eq 1) 'failed staged installer returns a failure'
 Assert ((Read-ZhJson (Join-Path $failedState 'assistant-config.json')).installerRoot -eq $source) 'failed installer handoff preserves active startup version'
@@ -281,7 +281,7 @@ Assert ((& $module {$script:Requests.Count}) -eq 3) 'all three routes attempted 
 
 # Run one real watcher pass without GUI/registry side effects, then verify the
 # per-state mutex excludes a second watcher before any check.
-Write-ZhJson @{enabled=$true;installerRoot=$source;appDir=$networkApp;installerVersion='0.11.0'} (Join-Path $networkState 'assistant-config.json')
+Write-ZhJson @{enabled=$true;installerRoot=$source;appDir=$networkApp;installerVersion='0.11.1'} (Join-Path $networkState 'assistant-config.json')
 $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Watch -Once -Offline -AppDir $networkApp -StateDir $networkState 2>&1
 Assert ($LASTEXITCODE -eq 0) "single offline watcher pass: $output"
 Assert ((Snapshot $networkApp) -eq $networkAfter) 'watcher does not rewrite an unchanged current app'
@@ -296,7 +296,7 @@ try{
 
 # Restore also disables future automatic reapplication; no registry value in the
 # real user state can match this isolated test directory.
-Write-ZhJson @{enabled=$true;appDir=$app;installerRoot=$source;installerVersion='0.11.0'} (Join-Path $state 'assistant-config.json')
+Write-ZhJson @{enabled=$true;appDir=$app;installerRoot=$source;installerVersion='0.11.1'} (Join-Path $state 'assistant-config.json')
 $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Restore -AppDir $app -StateDir $state 2>&1
 Assert ($LASTEXITCODE -eq 0) "restore succeeds: $output"
 Assert ((Snapshot $app) -eq $before) 'restore recovers original app bytes'
@@ -317,7 +317,7 @@ Reject {Get-ZhCommand 'bad"path' $state $app} 'invalid startup argument rejected
     function script:Remove-ItemProperty { param($Path,$Name) $script:RunValue='';$script:Removed++ }
 }
 $startupState=Join-Path $TestRoot 'startup-state'
-$deployed=Install-ZhCache $source $startupState 'installer' '0.11.0'
+$deployed=Install-ZhCache $source $startupState 'installer' '0.11.1'
 Set-ZhStartup $deployed $app $startupState $true
 $registered=& $module {$script:RunValue}
 Assert ($registered.Contains('-WindowStyle Hidden') -and $registered.Contains($deployed)) 'enable registers the deployed hidden watcher'

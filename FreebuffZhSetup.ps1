@@ -37,7 +37,7 @@ try {
         exit 0
     }
     if ($Action -eq 'Status') {
-        $status = if (Test-Path -LiteralPath $statusPath) { Read-ZhJson $statusPath } else { [PSCustomObject]@{ state='NotInstalled'; message='尚未安装汉化更新助手，请双击“一键汉化.cmd”。'; appVersion='' } }
+        $status = if (Test-Path -LiteralPath $statusPath) { Read-ZhJson $statusPath } else { [PSCustomObject]@{ state='NotInstalled'; message='尚未安装汉化更新助手，请双击“安装.cmd”。'; appVersion='' } }
         Write-Host $status.message
         $installerVersion = [string](Get-ZhValue $config 'installerVersion' '未安装')
         $libraryVersion = [string](Get-ZhValue $status 'libraryVersion' '未知')

@@ -20,7 +20,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
-$InstallerVersion = '0.11.0'
+$InstallerVersion = '0.11.1'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
@@ -353,7 +353,7 @@ function Find-FreebuffDirectory {
             }
         } finally { $picker.Dispose() }
     }
-    throw '没有找到已安装的 Freebuff。请先安装 Freebuff 桌面版，再双击“一键汉化.cmd”；自定义位置可在弹出的窗口中选择。'
+    throw '没有找到已安装的 Freebuff。请先安装 Freebuff 桌面版，再双击“安装.cmd”；自定义位置可在弹出的窗口中选择。'
 }
 
 try {
@@ -927,7 +927,7 @@ try {
     Write-JsonFile -Value $manifest -Path $ManifestPath
     Write-Host "Freebuff $CurrentVersion 中文补丁 $PatchVersion 已安装。"
     Write-Host "原始文件备份位置：$BackupDir"
-    Write-Host '现在可以打开 Freebuff 使用中文界面。需要还原时，双击“还原英文.cmd”。'
+    Write-Host '现在可以打开 Freebuff 使用中文界面。需要还原时，双击“恢复英文.cmd”。'
 
 } catch {
     $failureMessage = $_.Exception.Message

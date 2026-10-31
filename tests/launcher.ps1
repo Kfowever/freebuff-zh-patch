@@ -72,7 +72,7 @@ Write-Host "中文入口参数正确：$Action"
 exit $Result
 '@
 [IO.File]::WriteAllText((Join-Path $entry 'FreebuffZhSetup.ps1'), $stub, $bom)
-foreach ($name in @('一键汉化.cmd', '还原英文.cmd', 'Install-Freebuff-Zh.cmd', 'Restore-Freebuff-Zh.cmd')) {
+foreach ($name in @('安装.cmd', '恢复英文.cmd', 'Install-Freebuff-Zh.cmd', 'Restore-Freebuff-Zh.cmd')) {
     Copy-Item -LiteralPath (Join-Path $repo $name) -Destination $entry
     foreach ($code in @(0, 1, 3)) {
         $info = New-Object Diagnostics.ProcessStartInfo

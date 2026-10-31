@@ -20,7 +20,7 @@ $installerVersion = [regex]::Match($engine, "InstallerVersion = '([^']+)'").Grou
 $library = Test-ZhLibrary (Join-Path $repo 'library')
 if (-not $OutputDir) { $OutputDir = [IO.Path]::GetFullPath((Join-Path $repo ("..\release-" + $installerVersion))) }
 [IO.Directory]::CreateDirectory($OutputDir) | Out-Null
-$installerFiles = @('FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','一键汉化.cmd','还原英文.cmd','检查更新.cmd','汉化管理.cmd','关闭自动更新.cmd','Install-Freebuff-Zh.cmd','Restore-Freebuff-Zh.cmd','README.md','LICENSE')
+$installerFiles = @('FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','安装.cmd','恢复英文.cmd','检查更新.cmd','查看状态.cmd','关闭自动更新.cmd','README.md','LICENSE')
 $hashes = [ordered]@{}
 foreach ($name in $installerFiles) { $hashes[$name] = Get-ZhHash (Join-Path $repo $name) }
 Write-ZhJson ([ordered]@{schemaVersion=1;version=$installerVersion;files=$hashes}) (Join-Path $repo 'installer.json')
