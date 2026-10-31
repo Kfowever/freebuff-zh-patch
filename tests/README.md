@@ -17,7 +17,7 @@ node tests/dom-protection.cjs
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/installer.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/launcher.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1 -OutputDir D:\临时打包目录 -SigningKey 私钥路径
-powershell -NoProfile -ExecutionPolicy Bypass -File tests/updater.ps1 -PackageDir D:\临时打包目录
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/updater.ps1 -PackageDir D:\临时打包目录\自动更新
 ```
 
 测试不依赖第三方 Node 包。安装器测试需要 Windows PowerShell 5.1，使用临时目录中的合成版本文件与启动字符串载体，不修改实际安装。测试副本会模拟应用已关闭；生产安装器的进程检查保持启用。测试覆盖中文路径、刷新前的文件及备份校验、安装/刷新/还原失败，以及回滚失败时保留恢复副本。测试目录保留供排查。
