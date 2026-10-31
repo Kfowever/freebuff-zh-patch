@@ -65,7 +65,7 @@ $signature = [Convert]::ToBase64String($signer.SignData([IO.File]::ReadAllBytes(
 $signer.Dispose()
 foreach ($directory in @($repo,$updatesDir)) { [IO.File]::WriteAllText((Join-Path $directory 'compatibility.json.sig'),$signature,[Text.Encoding]::ASCII) }
 $offlineEntries = @($installerEntries) + @('compatibility.json','compatibility.json.sig' | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path $repo $_)} }) + @($libraryEntries | ForEach-Object { [PSCustomObject]@{Name=('library/' + $_.Name);Source=$_.Source} })
-$offlineAsset = Make-Zip "Freebuff-汉化安装包-$installerVersion.zip" $offlineEntries $publicDir "v$installerVersion"
+$offlineAsset = Make-Zip "Freebuff-Setup-$installerVersion.zip" $offlineEntries $publicDir "v$installerVersion"
 $notes = "适用于 **Freebuff $($library.appVersions -join ' / ') / Windows x64**。`n`n**[点击下载汉化安装包]($($offlineAsset.url))** → 全部解压 → 双击 **安装.cmd**。`n`n下方 Source code 是源码，无需下载。`n`nSHA-256：``$($offlineAsset.sha256)```n"
 [IO.File]::WriteAllText((Join-Path $OutputDir 'release-notes.md'),$notes,(New-Object Text.UTF8Encoding($false)))
 Write-Output "PASS: 独立安装器 $installerVersion、翻译库 $($library.version)、兼容清单和离线整合包已生成。"
