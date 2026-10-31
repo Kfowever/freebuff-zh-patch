@@ -29,3 +29,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\FreebuffZhPatch.ps1" -Act
 检测到文件漂移、不完整安装或跨版本残留时会停止。自动回滚若未完成，会保留恢复副本并显示位置，避免继续覆盖。不要删除备份清单或手动将旧版 ASAR 写回新版应用。
 
 可在 Release 下载 ZIP 对应的 `.sha256`，用 `Get-FileHash` 校验下载文件。安装器本身不联网，也不读取或保存 Freebuff、GitHub 的令牌与密码。
+
+## 在线工作区
+
+0.10.0 适配 0.0.196 的在线工作区：在原有备份和等字节替换范围内增加加载完成钩子，从本机读取同一译文脚本，仅允许 Freebuff 官方配置的三个 HTTPS 来源（freebuff.com、staging-auth.freebuff.com、staging-2-auth.freebuffweb.site）。第三方页面与嵌入视图不会注入，不更改应用的登录、隔离或权限策略。还原会一并移除钩子。

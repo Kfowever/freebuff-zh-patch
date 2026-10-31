@@ -15,6 +15,7 @@ if (-not $EngineText.Contains($processCheck)) { throw 'Process inventory test se
 $EngineText = $EngineText.Replace($processCheck, '$processes = @()')
 $AppVersion = [regex]::Match($EngineText, "TestedAppVersion = '([^']+)'").Groups[1].Value
 $PatchVersion = [regex]::Match($EngineText, "PatchVersion = '([^']+)'").Groups[1].Value
+$HostedFixture = [regex]::Match($EngineText, '(?s)\$HostedOriginalText = @''\r?\n(.*?)\r?\n''@').Groups[1].Value
 $Utf8 = New-Object Text.UTF8Encoding($false)
 $Utf8Bom = New-Object Text.UTF8Encoding($true)
 $TestRoot = [IO.Path]::GetFullPath($TestRoot)
@@ -46,7 +47,7 @@ function New-Fixture([string]$Name, [string]$EntryUrl = './assets/main.js') {
     $asar = Join-Path $app 'resources\app.asar'
     $main = Join-Path $ui 'assets\main.js'
     [IO.File]::WriteAllText($index, "<html lang=`"en`">`n<script type=`"module`" src=`"$EntryUrl`"></script>`n</html>", $Utf8)
-    [IO.File]::WriteAllText($asar, ('fixture Starting Freebuff orchestrator' + [char]0x2026 + ' original-tail'), $Utf8)
+    [IO.File]::WriteAllText($asar, ($HostedFixture + ' fixture Starting Freebuff orchestrator' + [char]0x2026 + ' original-tail'), $Utf8)
     [IO.File]::WriteAllText($main, '// main fixture', $Utf8)
     return [PSCustomObject]@{
         Root = $root; App = $app; State = $state; Index = $index; Asar = $asar; Main = $main

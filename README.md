@@ -6,7 +6,7 @@
 
 为 **Freebuff Windows 桌面版**提供中文界面的非官方汉化补丁。支持一键安装、自动备份和还原英文，不包含 Freebuff 本体。
 
-**[下载 0.9.0 汉化补丁 ZIP](https://github.com/Kfowever/freebuff-zh-patch/releases/download/v0.9.0/Freebuff-Zh-Patch-0.9.0.zip)** · [查看最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
+**[下载 0.10.0 汉化补丁 ZIP](https://github.com/Kfowever/freebuff-zh-patch/releases/download/v0.10.0/Freebuff-Zh-Patch-0.10.0.zip)** · [查看最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
 
 ## 三步安装
 
@@ -20,15 +20,15 @@
 
 ## 支持版本
 
-- 补丁：**0.9.0**；已验证 **Freebuff 0.0.192.0，Windows x64**。
+- 补丁：**0.10.0**；已验证 **Freebuff 0.0.196.0，Windows x64**。
 - 其他 Freebuff 版本和 Windows 架构未经验证；不支持网页版、macOS、Linux。
 - 版本不匹配时会显示中文风险提示，默认取消；只有主动输入 `y` 才会尝试安装。
 
-## 0.9.0 更新
+## 0.10.0 更新
 
-- 适配新版模型选项、模型下线提示、聊天迁移和问答提示，补齐赞助任务的停止、退出与后台运行说明。
-- 安装、更新、还原和错误提示中文化；新增中文双击入口，支持自动查找安装目录和正常关闭应用。
-- 清理重复译文并增加检查，继续保护聊天正文、草稿、代码、终端、项目名称和文件内容。
+- 适配新版在线工作区，同时保留本地登录页汉化；无需额外安装浏览器脚本。
+- 补齐项目、聊天、语音输入、账号与会话提示。
+- 保留中文一键安装、自动备份和还原。在线界面可独立更新，后续少量漏翻可反馈。
 
 ## 常见问题
 

@@ -3,7 +3,7 @@ setlocal EnableExtensions
 chcp 65001 >nul
 title Freebuff 汉化补丁 - 还原英文界面
 set "PATCH_SCRIPT=%~dp0FreebuffZhPatch.ps1"
-echo Freebuff 汉化补丁 0.9.0 - 还原英文界面
+echo Freebuff 汉化补丁 0.10.0 - 还原英文界面
 echo.
 echo 请先保存工作。安装器会尝试正常关闭 Freebuff。
 echo.

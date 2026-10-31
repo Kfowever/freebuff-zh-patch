@@ -8,6 +8,8 @@ node tests/freebuff-190.cjs
 node tests/freebuff-081.cjs
 node tests/freebuff-082.cjs
 node tests/freebuff-090.cjs
+node tests/freebuff-010.cjs
+node tests/hosted-workspace.cjs
 node tests/translation-integrity.cjs
 node tests/dom-protection.cjs
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/installer.ps1
@@ -21,3 +23,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/launcher.ps1
 `translation-integrity.cjs` 检查重复词条、重复正则及金额保留。`launcher.ps1` 在中文、空格和 `&` 路径中运行实际 CMD 入口，检查参数、结果及退出码；正常关闭进程和安装位置发现使用模拟对象，不会关闭本机应用。`installer.ps1` 还验证跨版本迁移、旧备份保留，以及非交互环境下包括 `-Force` 在内的版本不匹配取消。
 
 在浏览器中打开 `dom.html`，检查结果为 `PASS`，验证真实 DOM 和 MutationObserver 行为，包括新版导航和小时额度标签。安装器测试同时验证新版根路径资源、深层页面可用的补丁 URL、旧版相对路径，以及远程或目录穿越入口的无写入拒绝。这些测试不能代替登录后的完整 Freebuff 操作检查。
+
+0.10.0 新增在线工作区注入检查（Electron 模拟对象）：只在官方 HTTPS 来源的顶层应用窗口执行本地译文脚本，拒绝第三方地址和嵌入视图；不改变原有登录、导航或权限。安装器在 ASAR 中同时验证启动译文及工作区注入标记，任一项不匹配则停止。模拟检查不等同于登录后在线界面的端到端测试。

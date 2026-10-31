@@ -18,13 +18,37 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
-$PatchVersion = '0.9.0'
-$TestedAppVersion = '0.0.192.0'
+$PatchVersion = '0.10.0'
+$TestedAppVersion = '0.0.196.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'
 $PatchAssetName = 'freebuff-zh-cn.js'
 $StartupOriginalText = 'Starting Freebuff orchestrator…'
 $StartupLocalizedText = 'Freebuff 编排器正在启动…'
+$HostedOriginalText = @'
+/**
+ * Freebuff — Electron main process (the shell side of the
+ * Electron-shell + Bun-orchestrator split described in the README).
+ *
+ * Electron's main process runs Node, not Bun. To honor "Bun main process"
+ * (reuse sdk/ + agent-runtime, which export Bun-targeted TS) the shell spawns
+ * the Bun orchestrator as a child process and talks to it over local HTTP/SSE
+ * on 127.0.0.1. The renderer is the existing self-contained UI the Bun server
+ * serves, so there is no separate renderer build step.
+ *
+ * Two run modes, see resolveOrchestrator():
+ *   - dev: spawn a system `bun` on the TS source (src/server/main.ts).
+ *   - packaged: spawn the Bun binary shipped in app resources on the pre-bundled
+ *     orchestrator.js (scripts/fetch-bun.ts + scripts/build-orchestrator.ts,
+ *     wired into the app via the electron-builder extraResources config). The
+ *     user needs no system Bun.
+ *
+ *   bun --cwd freebuff-desktop run app        # launch from source (dev)
+ */
+'@
+$HostedLocalizedText = @'
+/*FREEBUFF_ZH_HOSTED*/queueMicrotask(()=>{const{app,BrowserWindow}=require('electron');const fs=require('node:fs'),path=require('node:path');app.on('web-contents-created',(_,w)=>{w.on('did-finish-load',()=>{try{if(!BrowserWindow.fromWebContents(w)||!['https://staging-2-auth.freebuffweb.site','https://staging-auth.freebuff.com','https://freebuff.com'].includes(new URL(w.getURL()).origin))return;const p=path.join(process.resourcesPath,'orchestrator','ui','assets','freebuff-zh-cn.js');w.executeJavaScript(fs.readFileSync(p,'utf8')).catch(e=>console.warn('Freebuff Chinese patch:',e.message))}catch(e){console.warn('Freebuff Chinese patch:',e.message)}})})});/*...........................................................................................................................................................................................................................................................................................................................................*/
+'@
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 function Get-Sha256 {
@@ -268,6 +292,8 @@ function Get-StartupPatchInfo {
         throw '启动界面译文的 UTF-8 字节长度必须与原文相同。已停止操作以避免损坏 app.asar。'
     }
     $data = [IO.File]::ReadAllBytes($Path)
+    $hostOriginal = @(Find-BytePatternOffsets -Data $data -Pattern ([Text.Encoding]::UTF8.GetBytes($HostedOriginalText)))
+    $hostPatched = @(Find-BytePatternOffsets -Data $data -Pattern ([Text.Encoding]::UTF8.GetBytes($HostedLocalizedText)))
     $sourceOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $sourceBytes)
     $targetOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $targetBytes)
     $state = if (($sourceOffsets.Count -eq 1) -and ($targetOffsets.Count -eq 0)) {
@@ -277,6 +303,8 @@ function Get-StartupPatchInfo {
     } else {
         'Unknown'
     }
+    if (($state -eq 'Unpatched' -and ($hostOriginal.Count -ne 1 -or $hostPatched.Count -ne 0)) -or
+        ($state -eq 'Patched' -and ($hostOriginal.Count -ne 0 -or $hostPatched.Count -ne 1))) { $state = 'Unknown' }
     return [PSCustomObject]@{
         State = $state
         OriginalCount = $sourceOffsets.Count
@@ -300,6 +328,11 @@ function New-PatchedStartupAsar {
     if (($sourceOffsets.Count -ne 1) -or ($targetOffsets.Count -ne 0)) {
         throw "启动文本布局与预期不符（原文=$($sourceOffsets.Count)，译文=$($targetOffsets.Count)）。未修改 app.asar；请确认应用版本及译文后重试。"
     }
+    $hostSource = [Text.Encoding]::UTF8.GetBytes($HostedOriginalText)
+    $hostTarget = [Text.Encoding]::UTF8.GetBytes($HostedLocalizedText)
+    $hostOffsets = @(Find-BytePatternOffsets -Data $data -Pattern $hostSource)
+    if ($hostSource.Length -ne $hostTarget.Length -or $hostOffsets.Count -ne 1) { throw '在线工作区注入位置未知，未修改应用。' }
+    [Array]::Copy($hostTarget, 0, $data, $hostOffsets[0], $hostTarget.Length)
     [Array]::Copy($targetBytes, 0, $data, $sourceOffsets[0], $targetBytes.Length)
     [IO.File]::WriteAllBytes($Destination, $data)
     $verification = Get-StartupPatchInfo -Path $Destination

@@ -6,14 +6,14 @@ body:
     id: app-version
     attributes:
       label: Freebuff 版本
-      placeholder: 例如 0.0.192.0
+      placeholder: 例如 0.0.196.0
     validations:
       required: true
   - type: input
     id: patch-version
     attributes:
       label: 汉化补丁版本
-      placeholder: 例如 0.9.0
+      placeholder: 例如 0.10.0
     validations:
       required: true
   - type: input
