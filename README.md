@@ -6,7 +6,7 @@
 
 为 **Freebuff Windows 桌面版**提供中文界面的非官方汉化补丁。支持一键安装、自动备份和还原英文，不包含 Freebuff 本体。
 
-**[下载 0.10.0 汉化补丁 ZIP](https://github.com/Kfowever/freebuff-zh-patch/releases/download/v0.10.0/Freebuff-Zh-Patch-0.10.0.zip)** · [查看最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
+**[下载 0.10.1 汉化补丁 ZIP](https://github.com/Kfowever/freebuff-zh-patch/releases/download/v0.10.1/Freebuff-Zh-Patch-0.10.1.zip)** · [查看最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest) · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
 
 ## 三步安装
 
@@ -20,15 +20,15 @@
 
 ## 支持版本
 
-- 补丁：**0.10.0**；已验证 **Freebuff 0.0.196.0，Windows x64**。
+- 补丁：**0.10.1**；已验证 **Freebuff 0.0.196.0，Windows x64**。
 - 其他 Freebuff 版本和 Windows 架构未经验证；不支持网页版、macOS、Linux。
 - 版本不匹配时会显示中文风险提示，默认取消；只有主动输入 `y` 才会尝试安装。
 
-## 0.10.0 更新
+## 0.10.1 更新
 
-- 适配新版在线工作区，同时保留本地登录页汉化；无需额外安装浏览器脚本。
-- 补齐项目、聊天、语音输入、账号与会话提示。
-- 保留中文一键安装、自动备份和还原。在线界面可独立更新，后续少量漏翻可反馈。
+- 补齐按需加载的账户、账单、用量、奖励、模型服务商和身份验证等设置文案。
+- 修复地区说明、Discord 奖励、套餐价格与额度、充值及付款提示中的漏翻和中英混排。
+- 继续支持 0.0.196 在线工作区、中文一键安装、备份和还原。
 
 ## 常见问题
 

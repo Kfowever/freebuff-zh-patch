@@ -18,7 +18,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 
-$PatchVersion = '0.10.0'
+$PatchVersion = '0.10.1'
 $TestedAppVersion = '0.0.196.0'
 $PatchMarkerStart = '<!-- FREEBUFF_ZH_PATCH_START -->'
 $PatchMarkerEnd = '<!-- FREEBUFF_ZH_PATCH_END -->'

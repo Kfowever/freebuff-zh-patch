@@ -18,5 +18,5 @@ for (const [en, zh] of context.__exact) {
     assert.ok(zh.includes(amount) || zh.includes(number + ' 美元') || zh.includes(number + '美元'), `preserve ${amount}: ${en}`)
   }
 }
-assert.equal(context.__FREEBUFF_ZH_PATCH__.version, '0.10.0')
+assert.equal(context.__FREEBUFF_ZH_PATCH__.version, '0.10.1')
 console.log(`PASS: ${keys.length} unique dictionary entries and ${patterns.length} unique dynamic rules`)

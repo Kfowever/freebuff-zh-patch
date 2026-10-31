@@ -13,7 +13,7 @@ body:
     id: patch-version
     attributes:
       label: 汉化补丁版本
-      placeholder: 例如 0.10.0
+      placeholder: 例如 0.10.1
     validations:
       required: true
   - type: input

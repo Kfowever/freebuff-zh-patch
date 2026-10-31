@@ -415,4 +415,42 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   onMutation([{ type: 'characterData', target: modal.childNodes[0] }])
   equal(modal.textContent, '停止并关闭会话', '0.9.0 modal update')
 }
+{
+  const root = element('main', null, { class: 'workspace-settings' })
+  const features = element('ul', root, { class: 'workspace-plan-features' })
+  const daily = element('li', features)
+  const wallet = element('li', features)
+  const icon = element('svg', daily)
+  const dailyCount = { nodeType: 3, parentElement: daily, nodeValue: '21 hours' }
+  const dailyTail = { nodeType: 3, parentElement: daily, nodeValue: ' a day' }
+  const walletCount = { nodeType: 3, parentElement: wallet, nodeValue: '60 hours' }
+  const walletTail = { nodeType: 3, parentElement: wallet, nodeValue: ' wallet bonus each month, not rolled over' }
+  daily.childNodes.push(icon, dailyCount, dailyTail)
+  wallet.childNodes.push(walletCount, walletTail)
+  features.childNodes.push(daily, wallet)
+  const price = element('div', root, { class: 'workspace-plan-price' })
+  const small = element('small', price)
+  small.textContent = 'month'
+  price.childNodes.push(small)
+  const user = element('div', root, { class: 'bubble' })
+  user.textContent = '21 hours a day'
+  const protectedFeatures = element('ul', user, { class: 'workspace-plan-features' })
+  const protectedItem = element('li', protectedFeatures)
+  protectedItem.textContent = '60 hours wallet bonus each month, not rolled over'
+  protectedFeatures.childNodes.push(protectedItem); user.childNodes.push(protectedFeatures)
+  root.childNodes.push(features, price, user)
+  const { onMutation } = boot(root)
+  equal(daily.textContent.trim(), '每日 21 小时', 'settings split daily allowance')
+  equal(wallet.textContent.replace(/\s+，/, '，').trim(), '每月奖励 60 小时钱包额度，未用部分不结转', 'settings split monthly bonus contract')
+  equal(daily.childNodes[0], icon, 'settings plan icon preserved')
+  equal(daily.childNodes[1], dailyCount, 'settings daily numeric node preserved')
+  equal(wallet.childNodes[0], walletCount, 'settings wallet numeric node preserved')
+  equal(small.textContent, '月', 'settings split billing period')
+  equal(user.childNodes[0].nodeValue, '21 hours a day', 'settings words in user chat protected')
+  equal(protectedItem.textContent, '60 hours wallet bonus each month, not rolled over', 'settings-shaped user content protected')
+  dailyCount.nodeValue = '40 hours'; walletCount.nodeValue = '100 hours'
+  onMutation([{ type: 'characterData', target: dailyCount }, { type: 'characterData', target: walletCount }])
+  equal(daily.textContent.trim(), '每日 40 小时', 'settings dynamic split daily allowance')
+  equal(wallet.textContent.replace(/\s+，/, '，').trim(), '每月奖励 100 小时钱包额度，未用部分不结转', 'settings dynamic split wallet allowance')
+}
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)
