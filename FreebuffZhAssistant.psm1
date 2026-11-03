@@ -345,6 +345,21 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
             $handoff | Add-Member NoteProperty InstallerRoot $newRoot
             return $handoff
         }
+        $localDirectory = $catalog.LocalDirectory
+        $catalogFresh = $catalog.Fresh
+        $bundledPath = Join-Path $StateRoot 'catalog.bundled.json'
+        if (-not $CatalogPath -and (Test-Path -LiteralPath $bundledPath -PathType Leaf)) {
+            $bundled = Read-ZhJson $bundledPath
+            Test-ZhCatalog $bundled
+            $bundledMatch = @(Select-ZhLibrary $bundled $appVersion)
+            if ($bundledMatch.Count -gt 0 -and
+                [version]$bundledMatch[0].minInstallerVersion -le [version]$current.version -and
+                ($selected.Count -eq 0 -or [version]$bundledMatch[0].version -gt [version]$selected[0].version)) {
+                $selected = $bundledMatch
+                $localDirectory = ''
+                $catalogFresh = $false
+            }
+        }
         if ($selected.Count -eq 0) {
             if ($catalog.Fresh) { return Set-ZhStatus $StateRoot 'Unsupported' "Freebuff $appVersion 的汉化尚未更新，请等待更新，或通过 Issue 反馈。" $appVersion '' $true }
             return Set-ZhStatus $StateRoot 'NetworkError' "本地没有适配 Freebuff $appVersion 的翻译库，且未能确认 GitHub 最新清单。请稍后重试，或查看发布页面。" $appVersion
@@ -364,7 +379,7 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
                 return Set-ZhStatus $StateRoot 'Current' "本机已有较新的匹配翻译库 $($previous.PatchVersion)，保留当前版本，不自动降级。" $appVersion $previous.PatchVersion $catalog.Fresh
             }
         }
-        $libraryRoot = Get-ZhPackage $item $StateRoot 'library' $catalog.LocalDirectory -Offline:$Offline
+        $libraryRoot = Get-ZhPackage $item $StateRoot 'library' $localDirectory -Offline:$Offline
         $library = Test-ZhLibrary $libraryRoot $item.version
         if (@($library.appVersions) -cnotcontains $appVersion -or [version]$library.minInstallerVersion -gt [version]$current.version) { throw '翻译库实际内容与版本选择结果不匹配。' }
         # Confirm the executable did not update during download.
@@ -380,20 +395,20 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
                 (Get-ZhHash (Join-Path (Join-Path $AppDir 'resources\orchestrator\ui\assets') $manifest.MainAssetName)) -ceq $manifest.MainAssetHash -and
                 (Get-ZhHash (Join-Path $AppDir 'resources\orchestrator\ui\index.html')) -ceq $manifest.PatchedIndexHash -and
                 (Get-ZhHash (Join-Path $AppDir 'resources\app.asar')) -ceq $manifest.PatchedAppAsarHash) {
-                return Set-ZhStatus $StateRoot 'Current' "已安装匹配的翻译库 $($item.version)，Freebuff $appVersion 可正常使用汉化。" $appVersion $item.version $catalog.Fresh
+                return Set-ZhStatus $StateRoot 'Current' "已安装匹配的翻译库 $($item.version)，Freebuff $appVersion 可正常使用汉化。" $appVersion $item.version $catalogFresh
             }
         }
         if (-not $CloseRunningApp -and @(Get-Process -Name Freebuff -ErrorAction SilentlyContinue).Count -gt 0) {
-            return Set-ZhStatus $StateRoot 'Pending' "适配 Freebuff $appVersion 的翻译库 $($item.version) 已下载并校验。请退出 Freebuff，助手会自动应用。" $appVersion $item.version $catalog.Fresh
+            return Set-ZhStatus $StateRoot 'Pending' "适配 Freebuff $appVersion 的翻译库 $($item.version) 已下载并校验。请退出 Freebuff，助手会自动应用。" $appVersion $item.version $catalogFresh
         }
         try { [void](Invoke-ZhEngine $SourceRoot $libraryRoot $AppDir $StateRoot 'Install' -CloseRunningApp:$CloseRunningApp) }
         catch {
             if ($_.Exception.Message.Contains('Freebuff 正在运行')) {
-                return Set-ZhStatus $StateRoot 'Pending' '翻译库已准备好。Freebuff 尚未退出，退出后会自动应用。' $appVersion $item.version $catalog.Fresh
+                return Set-ZhStatus $StateRoot 'Pending' '翻译库已准备好。Freebuff 尚未退出，退出后会自动应用。' $appVersion $item.version $catalogFresh
             }
             throw
         }
-        return Set-ZhStatus $StateRoot 'Applied' "已为 Freebuff $appVersion 应用翻译库 $($item.version)，重新打开应用即可。" $appVersion $item.version $catalog.Fresh
+        return Set-ZhStatus $StateRoot 'Applied' "已为 Freebuff $appVersion 应用翻译库 $($item.version)，重新打开应用即可。" $appVersion $item.version $catalogFresh
     } catch {
         return Set-ZhStatus $StateRoot 'Failed' ("检查或应用未完成：" + $_.Exception.Message) $(if ($AppDir) { try { Get-ZhAppVersion $AppDir } catch { '' } } else { '' })
     } finally { if ($null -ne $lock) { $lock.Dispose() } }

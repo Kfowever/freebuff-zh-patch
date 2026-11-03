@@ -6,12 +6,12 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.10.1'
+  const PATCH_VERSION = '0.10.2'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
     Object.entries({
-      // Settings audit 0.10.1: lazy-loaded modules and partially translated labels.
+      // Settings audit 0.10.2: lazy-loaded modules and partially translated labels.
       "Skip all these questions": "跳过所有这些问题",
       "Orchestration and scripting": "编排与脚本",
       "I will hold only one Freebuff account. Creating, buying or sharing more than one account is not allowed, and every account I hold may be suspended if I do.": "我只持有一个 Freebuff 账户。我不得创建、购买或分享多个账户；如有违反，我持有的所有账户都可能被停用。",
@@ -1118,6 +1118,10 @@
       "Cloud copy": "云端副本",
       "Navigation history": "导航历史记录",
       "Add to dictionary": "添加到词典",
+      "Freebuff couldn’t open your browser. Copy the sign-in link and paste it into your browser.": "Freebuff 无法打开浏览器。请复制登录链接，并将其粘贴到浏览器中。",
+      "Could not copy the link.": "无法复制链接。",
+      "Copy sign-in link": "复制登录链接",
+      "Give Freebuff more context": "向 Freebuff 提供更多上下文",
       "Could not copy the link": "无法复制链接",
       "Stealth model. May change or be withdrawn without notice.": "隐身模型，可能随时更改或下架，恕不另行通知。",
       "Untitled ad": "未命名广告",
