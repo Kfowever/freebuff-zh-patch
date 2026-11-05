@@ -2,14 +2,28 @@
     "schemaVersion":  1,
     "repository":  "Kfowever/freebuff-zh-patch",
     "installer":  {
-                      "fileName":  "Freebuff-Zh-Installer-0.11.3.zip",
-                      "url":  "https://github.com/Kfowever/freebuff-zh-patch/releases/download/updates-v0.11.3/Freebuff-Zh-Installer-0.11.3.zip",
-                      "sha256":  "71da9b891f2e1e8e23a8b1b6bd8d55dc1052ea193a681250128f3a5e7d4b837b",
-                      "size":  31400,
-                      "version":  "0.11.3",
-                      "manifestSha256":  "d496e8791d17ff5c8c444a392f01f30107dbc51e016e7ff096acf7f60fef18c4"
+                      "fileName":  "Freebuff-Zh-Installer-0.11.5.zip",
+                      "url":  "https://github.com/Kfowever/freebuff-zh-patch/releases/download/updates-v0.11.5/Freebuff-Zh-Installer-0.11.5.zip",
+                      "sha256":  "7d33410b19ee9286375e4059fad2442fc706e710fa37b79f0312adc6862d4476",
+                      "size":  31445,
+                      "version":  "0.11.5",
+                      "manifestSha256":  "afdf7a010a92cc91183161236291b145ce97e7bd8de26f12df74e9c0daa54fb8"
                   },
     "libraries":  [
+                      {
+                          "fileName":  "Freebuff-Zh-Library-0.10.3.zip",
+                          "url":  "https://github.com/Kfowever/freebuff-zh-patch/releases/download/updates-v0.11.5/Freebuff-Zh-Library-0.10.3.zip",
+                          "sha256":  "83a1c9c5544b872f4c91b95159edafa4302f566f690af85bf461a4cf7785903d",
+                          "size":  138241,
+                          "version":  "0.10.3",
+                          "manifestSha256":  "efa66c611e351cb2b534f9b86eae38ae28f67d7a22a874ab4ec52c527ea5554e",
+                          "minInstallerVersion":  "0.11.0",
+                          "appVersions":  [
+                                              "0.0.196.0",
+                                              "0.0.198.0",
+                                              "0.0.200.0"
+                                          ]
+                      },
                       {
                           "fileName":  "Freebuff-Zh-Library-0.10.2.zip",
                           "url":  "https://github.com/Kfowever/freebuff-zh-patch/releases/download/updates-v0.11.3/Freebuff-Zh-Library-0.10.2.zip",

@@ -23,6 +23,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Actio
 
 底层 `FreebuffZhPatch.ps1 -Action Install|Restore|Status -LibraryDir 路径` 只处理本机文件，不联网；默认库位于旁边的 `library` 目录。保留旧版 `-Force` 交互确认供人工排查，**更新助手从不使用此开关**。直接使用底层引擎前应关闭自动更新，以免与后台操作并发。
 
+如需在未列入兼容清单的版本上手动尝试，先退出 Freebuff，在解压后的安装包目录打开 PowerShell 并运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhPatch.ps1 -Action Install -Force -Interactive
+```
+
+版本不匹配时，输入 `y` 确认。文件结构、校验、备份和回滚检查照常执行。恢复英文时，在同一目录运行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhPatch.ps1 -Action Restore -Interactive
+```
+
 ## 版本与校验
 
 - `installer.json`：安装器版本及文件 SHA-256。安装器包含助手、安装引擎和中文入口，不包含翻译库。

@@ -6,12 +6,12 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.10.2'
+  const PATCH_VERSION = '0.10.3'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
     Object.entries({
-      // Settings audit 0.10.2: lazy-loaded modules and partially translated labels.
+      // Settings audit 0.10.3: lazy-loaded modules and partially translated labels.
       "Skip all these questions": "跳过所有这些问题",
       "Orchestration and scripting": "编排与脚本",
       "I will hold only one Freebuff account. Creating, buying or sharing more than one account is not allowed, and every account I hold may be suspended if I do.": "我只持有一个 Freebuff 账户。我不得创建、购买或分享多个账户；如有违反，我持有的所有账户都可能被停用。",
@@ -1122,6 +1122,11 @@
       "Could not copy the link.": "无法复制链接。",
       "Copy sign-in link": "复制登录链接",
       "Give Freebuff more context": "向 Freebuff 提供更多上下文",
+      "This computer couldn’t look up Freebuff’s servers. Check your internet connection, VPN or DNS settings.": "此电脑无法解析 Freebuff 的服务器地址。请检查网络连接、VPN 或 DNS 设置。",
+      "Something on this computer or network, such as a proxy or an antivirus web shield, is intercepting Freebuff’s secure connection.": "此电脑或网络上的某项功能正在拦截 Freebuff 的安全连接，例如代理或杀毒软件的网页防护。",
+      "Your Desktop sign-in has expired. Sign out, then sign in again.": "桌面端登录已过期。请退出登录后重新登录。",
+      "Freebuff took too long to load on this connection.": "Freebuff 在当前网络下加载超时。",
+      "Freebuff’s servers didn’t answer this computer in time. Check your connection, then try again.": "Freebuff 服务器未及时响应此电脑。请检查网络连接后重试。",
       "Could not copy the link": "无法复制链接",
       "Stealth model. May change or be withdrawn without notice.": "隐身模型，可能随时更改或下架，恕不另行通知。",
       "Untitled ad": "未命名广告",

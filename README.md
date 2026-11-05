@@ -6,6 +6,11 @@
 
 **[下载最新版本](https://github.com/Kfowever/freebuff-zh-patch/releases/latest)** · [反馈问题](https://github.com/Kfowever/freebuff-zh-patch/issues/new/choose)
 
+## 安装要求
+
+- Windows x64
+- Freebuff 桌面版 **0.0.196.0、0.0.198.0 或 0.0.200.0**
+
 ## 三步安装
 
 1. 先安装 [Freebuff 官方桌面版](https://freebuff.com/)，保存工作。
@@ -29,9 +34,9 @@ Freebuff 更新后，助手会查询本项目 GitHub 兼容清单，下载明确
 
 | 项目 | 当前版本 |
 | --- | --- |
-| 安装器 / 更新助手 | **0.11.3** |
-| 翻译库 | **0.10.2** |
-| 当前明确支持的应用 | **Freebuff 0.0.196.0 / 0.0.198.0，Windows x64** |
+| 安装器 / 更新助手 | **0.11.5** |
+| 翻译库 | **0.10.3** |
+| 当前明确支持的应用 | **Freebuff 0.0.196.0 / 0.0.198.0 / 0.0.200.0，Windows x64** |
 
 Installer 包只带安装和更新程序；Library 包只带译文与版本适配数据。普通用户使用 Offline 包最方便，后续只需自动下载有变化的部分；需要新版安装器时，助手也会单独校验并切换。
 
