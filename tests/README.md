@@ -5,6 +5,7 @@
 ```powershell
 node tests/static-translation.cjs
 node tests/freebuff-190.cjs
+node tests/freebuff-201.cjs
 node tests/freebuff-081.cjs
 node tests/freebuff-082.cjs
 node tests/freebuff-090.cjs

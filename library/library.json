@@ -1,16 +1,18 @@
 {
   "schemaVersion": 1,
-  "version": "0.10.3",
+  "version": "0.10.4",
   "minInstallerVersion": "0.11.0",
   "appVersions": [
     "0.0.196.0",
     "0.0.198.0",
-    "0.0.200.0"
+    "0.0.200.0",
+    "0.0.201.0"
   ],
   "files": {
-    "freebuff-zh-cn.js": "2cfd0c7032e1f6a1a194e9ef8f981b15ddf188056d141502f6d997b06024bd64",
+    "freebuff-zh-cn.js": "794902c0da8dde71926c9d1862ca4bee83b7794a1fabc98de0e7d4dd0a71d31a",
     "profiles/0.0.196.0.json": "2716c4473a112dc61fa55f50aa030719ccdc212d7aa31031e65699a47083ecb0",
     "profiles/0.0.198.0.json": "86d3ced7f2318849d6861b4bd8454ae56470675f9cc7cbbac50278058acbd639",
-    "profiles/0.0.200.0.json": "c5f8479e4055f9e4c33d584ff962b0c6a42ed48aa72226a14f71dfa4cb04c249"
+    "profiles/0.0.200.0.json": "c5f8479e4055f9e4c33d584ff962b0c6a42ed48aa72226a14f71dfa4cb04c249",
+    "profiles/0.0.201.0.json": "c17e36fe8c0e3c8358eadf8f371dd3aceba8e440b0e91525d638a3763830785f"
   }
 }
