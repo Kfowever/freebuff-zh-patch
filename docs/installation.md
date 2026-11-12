@@ -49,12 +49,14 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhPatch.ps1 -Actio
 ## 打包与发布
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -OutputDir 新的输出目录 -SigningKey 私钥路径
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\package.ps1 -ReleaseVersion 新发行版号 -OutputDir 新的输出目录 -SigningKey 私钥路径
 ```
 
-工具生成独立 Installer ZIP、Library ZIP、Offline 整合 ZIP、对应校验文件及兼容清单，同时刷新仓库中的 `installer.json` 和 `compatibility.json`。它保留清单内其他历史库版本。修改安装器文件后须重新打包；修改译文或适配数据时应递增翻译库版本、更新库内文件哈希，已发布版本不能原地换内容。
+发行版号、安装器版本和翻译库版本独立管理。仅更新翻译或适配数据时，递增翻译库版本并更新库内文件哈希，再用新的发行版号打包。工具按已签名的清单校验并复用原安装器，兼容清单继续引用原安装器的下载地址和哈希。可用 `-InstallerDirectory` 指定保存原安装器 ZIP 的目录以离线打包。
 
-输出按用途分目录：`用户下载` 只包含一个中文安装 ZIP，正式发行版只上传此包；`自动更新` 放安装器、翻译库、校验文件和签名清单，发布到 `updates-v安装器版本` 的独立预发布资源页，标题注明“无需手动下载”，不要设为最新发行版。根目录的 `release-notes.md` 是简短说明和安装包直达链接。GitHub 自动附加的 Source code 文件属于源码，普通用户无需下载。安装器与翻译库内容不变时，仅迁移资源地址并重新签发兼容清单，不改写相同版本的程序文件。
+工具始终生成一个整合安装包、翻译库、校验文件和签名清单。安装脚本或入口发生变化时，递增安装器版本再生成独立安装器 ZIP。整合包沿用原安装器里的说明文件，最新支持版本见项目 README 和发行说明。
+
+正式发行版上传 `用户下载` 中的单个 ZIP。将 `自动更新` 中本次生成的附件上传至 `updates-v发行版号` 预发布资源页，标题注明“无需手动下载”。根目录的 `release-notes.md` 包含简短说明和下载链接。
 
 打包必须用 `-SigningKey 私钥路径` 或环境变量 `FREEBUFF_ZH_SIGNING_KEY` 提供与助手内置公钥对应的 RSA 私钥。私钥只保留在本地安全位置，不得提交；发布清单同时提供 `compatibility.json.sig`，主分支中的清单和签名需一起更新。签名针对文件原始 UTF-8 字节，发布时不得重新排版。
 

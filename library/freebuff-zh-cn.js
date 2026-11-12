@@ -6,12 +6,12 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.10.4'
+  const PATCH_VERSION = '0.10.5'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
     Object.entries({
-      // Settings audit 0.10.4: lazy-loaded modules and partially translated labels.
+      // Settings audit 0.10.5: lazy-loaded modules and partially translated labels.
       "Skip all these questions": "跳过所有这些问题",
       "Orchestration and scripting": "编排与脚本",
       "I will hold only one Freebuff account. Creating, buying or sharing more than one account is not allowed, and every account I hold may be suspended if I do.": "我只持有一个 Freebuff 账户。我不得创建、购买或分享多个账户；如有违反，我持有的所有账户都可能被停用。",
@@ -1121,6 +1121,11 @@
       "Freebuff couldn’t open your browser. Copy the sign-in link and paste it into your browser.": "Freebuff 无法打开浏览器。请复制登录链接，并将其粘贴到浏览器中。",
       "Could not copy the link.": "无法复制链接。",
       "Copy sign-in link": "复制登录链接",
+      "File Manager": "文件管理器",
+      "That application is not available": "该应用不可用",
+      "The workspace path is unavailable": "工作区路径不可用",
+      "That application cannot open this path": "该应用无法打开此路径",
+      "Could not open that path": "无法打开该路径",
       "Give Freebuff more context": "向 Freebuff 提供更多上下文",
       "This computer couldn’t look up Freebuff’s servers. Check your internet connection, VPN or DNS settings.": "此电脑无法解析 Freebuff 的服务器地址。请检查网络连接、VPN 或 DNS 设置。",
       "Something on this computer or network, such as a proxy or an antivirus web shield, is intercepting Freebuff’s secure connection.": "此电脑或网络上的某项功能正在拦截 Freebuff 的安全连接，例如代理或杀毒软件的网页防护。",

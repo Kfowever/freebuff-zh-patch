@@ -1,5 +1,10 @@
 ﻿[CmdletBinding()]
-param([string]$OutputDir = '', [string]$SigningKey = $env:FREEBUFF_ZH_SIGNING_KEY)
+param(
+    [string]$OutputDir = '',
+    [string]$SigningKey = $env:FREEBUFF_ZH_SIGNING_KEY,
+    [string]$ReleaseVersion = '',
+    [string]$InstallerDirectory = ''
+)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repo = Split-Path -Parent $PSScriptRoot
@@ -17,19 +22,29 @@ try {
 $engine = [IO.File]::ReadAllText((Join-Path $repo 'FreebuffZhPatch.ps1'))
 $installerVersion = [regex]::Match($engine, "InstallerVersion = '([^']+)'").Groups[1].Value
 [void](Assert-ZhVersion $installerVersion)
+if (-not $ReleaseVersion) { $ReleaseVersion = $installerVersion }
+[void](Assert-ZhVersion $ReleaseVersion)
 $library = Test-ZhLibrary (Join-Path $repo 'library')
-if (-not $OutputDir) { $OutputDir = [IO.Path]::GetFullPath((Join-Path $repo ("..\release-" + $installerVersion))) }
+$catalogPath = Join-Path $repo 'compatibility.json'
+$previous = $null
+if (Test-Path -LiteralPath $catalogPath) {
+    $content = [IO.File]::ReadAllText($catalogPath)
+    Test-ZhCatalogSignature $content ([IO.File]::ReadAllText($catalogPath + '.sig'))
+    $previous = $content | ConvertFrom-Json
+    Test-ZhCatalog $previous
+}
+$reuseInstaller = $null -ne $previous -and $previous.installer.version -ceq $installerVersion
+if ($reuseInstaller -and $ReleaseVersion -ceq $installerVersion) {
+    throw '沿用已发布的安装器时，请用 -ReleaseVersion 指定新的发行版号。'
+}
+if (-not $OutputDir) { $OutputDir = [IO.Path]::GetFullPath((Join-Path $repo ("..\release-" + $ReleaseVersion))) }
 [IO.Directory]::CreateDirectory($OutputDir) | Out-Null
-$updatesTag = "updates-v$installerVersion"
+$updatesTag = "updates-v$ReleaseVersion"
 $updatesDir = Join-Path $OutputDir '自动更新'
 $publicDir = Join-Path $OutputDir '用户下载'
 [IO.Directory]::CreateDirectory($updatesDir) | Out-Null
 [IO.Directory]::CreateDirectory($publicDir) | Out-Null
 $installerFiles = @('FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','安装.cmd','恢复英文.cmd','检查更新.cmd','查看状态.cmd','关闭自动更新.cmd','README.md','LICENSE')
-$hashes = [ordered]@{}
-foreach ($name in $installerFiles) { $hashes[$name] = Get-ZhHash (Join-Path $repo $name) }
-Write-ZhJson ([ordered]@{schemaVersion=1;version=$installerVersion;files=$hashes}) (Join-Path $repo 'installer.json')
-[void](Test-ZhInstaller $repo)
 function Make-Zip([string]$Name, $Files, [string]$Directory = $updatesDir, [string]$Tag = $updatesTag) {
     $archive = Join-Path $Directory $Name
     if (Test-Path -LiteralPath $archive) { throw "请使用新的输出目录，避免覆盖已有安装包：$archive" }
@@ -41,34 +56,63 @@ function Make-Zip([string]$Name, $Files, [string]$Directory = $updatesDir, [stri
     if ($Directory -eq $updatesDir) { [IO.File]::WriteAllText(($archive + '.sha256'), ($hash + '  ' + $Name + "`n"), (New-Object Text.UTF8Encoding($false))) }
     return [PSCustomObject]@{fileName=$Name;url="https://github.com/Kfowever/freebuff-zh-patch/releases/download/$Tag/$([uri]::EscapeDataString($Name))";sha256=$hash;size=(Get-Item -LiteralPath $archive).Length}
 }
-$installerEntries = @($installerFiles + 'installer.json' | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path $repo $_)} })
-$installerAsset = Make-Zip "Freebuff-Zh-Installer-$installerVersion.zip" $installerEntries
-$installerAsset | Add-Member NoteProperty version $installerVersion
-$installerAsset | Add-Member NoteProperty manifestSha256 (Get-ZhHash (Join-Path $repo 'installer.json'))
-$libraryNames = @($library.files.PSObject.Properties | ForEach-Object { $_.Name }) + 'library.json'
-$libraryEntries = @($libraryNames | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path (Join-Path $repo 'library') $_)} })
-$libraryAsset = Make-Zip "Freebuff-Zh-Library-$($library.version).zip" $libraryEntries
-$libraryAsset | Add-Member NoteProperty version $library.version
-$libraryAsset | Add-Member NoteProperty manifestSha256 (Get-ZhHash (Join-Path $repo 'library\library.json'))
-$libraryAsset | Add-Member NoteProperty minInstallerVersion $library.minInstallerVersion
-$libraryAsset | Add-Member NoteProperty appVersions @($library.appVersions)
-$historical = @()
-if (Test-Path -LiteralPath (Join-Path $repo 'compatibility.json')) {
-    $previous = Read-ZhJson (Join-Path $repo 'compatibility.json'); Test-ZhCatalog $previous
-    $historical = @($previous.libraries | Where-Object { $_.version -cne $library.version })
+$stage = ''
+try {
+    if ($reuseInstaller) {
+        $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\') + '\'
+        $stage = Join-Path $tempRoot ('freebuff-zh-package-' + [guid]::NewGuid().ToString('N'))
+        $installerAsset = $previous.installer
+        $installerRoot = Get-ZhPackage $installerAsset $stage 'installer' $InstallerDirectory -Offline:([bool]$InstallerDirectory)
+        $metadata = Test-ZhInstaller $installerRoot $installerVersion
+        foreach ($name in $installerFiles | Where-Object { $_ -cne 'README.md' }) {
+            if ($metadata.files.PSObject.Properties[$name].Value -ine (Get-ZhHash (Join-Path $repo $name))) {
+                throw "安装器文件 $name 已更改，请先递增安装器版本。"
+            }
+        }
+        $names = @($metadata.files.PSObject.Properties | ForEach-Object Name) + 'installer.json'
+        $installerEntries = @($names | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path $installerRoot $_)} })
+    } else {
+        $hashes = [ordered]@{}
+        foreach ($name in $installerFiles) { $hashes[$name] = Get-ZhHash (Join-Path $repo $name) }
+        Write-ZhJson ([ordered]@{schemaVersion=1;version=$installerVersion;files=$hashes}) (Join-Path $repo 'installer.json')
+        [void](Test-ZhInstaller $repo)
+        $installerEntries = @($installerFiles + 'installer.json' | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path $repo $_)} })
+        $installerAsset = Make-Zip "Freebuff-Zh-Installer-$installerVersion.zip" $installerEntries
+        $installerAsset | Add-Member NoteProperty version $installerVersion
+        $installerAsset | Add-Member NoteProperty manifestSha256 (Get-ZhHash (Join-Path $repo 'installer.json'))
+    }
+    $libraryNames = @($library.files.PSObject.Properties | ForEach-Object { $_.Name }) + 'library.json'
+    $libraryEntries = @($libraryNames | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path (Join-Path $repo 'library') $_)} })
+    $libraryAsset = Make-Zip "Freebuff-Zh-Library-$($library.version).zip" $libraryEntries
+    $libraryAsset | Add-Member NoteProperty version $library.version
+    $libraryAsset | Add-Member NoteProperty manifestSha256 (Get-ZhHash (Join-Path $repo 'library\library.json'))
+    $libraryAsset | Add-Member NoteProperty minInstallerVersion $library.minInstallerVersion
+    $libraryAsset | Add-Member NoteProperty appVersions @($library.appVersions)
+    $historical = @()
+    if ($null -ne $previous) {
+        $historical = @($previous.libraries | Where-Object { $_.version -cne $library.version })
+    }
+    $catalog = [ordered]@{schemaVersion=1;repository='Kfowever/freebuff-zh-patch';installer=$installerAsset;libraries=(@($libraryAsset) + $historical)}
+    Test-ZhCatalog ([PSCustomObject]$catalog)
+    Write-ZhJson $catalog (Join-Path $repo 'compatibility.json')
+    Write-ZhJson $catalog (Join-Path $updatesDir 'compatibility.json')
+    $signature = [Convert]::ToBase64String($signer.SignData([IO.File]::ReadAllBytes((Join-Path $repo 'compatibility.json')),'SHA256'))
+    foreach ($directory in @($repo,$updatesDir)) { [IO.File]::WriteAllText((Join-Path $directory 'compatibility.json.sig'),$signature,[Text.Encoding]::ASCII) }
+    $offlineEntries = @($installerEntries) + @('compatibility.json','compatibility.json.sig' | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path $repo $_)} }) + @($libraryEntries | ForEach-Object { [PSCustomObject]@{Name=('library/' + $_.Name);Source=$_.Source} })
+    $offlineAsset = Make-Zip "Freebuff-Setup-$ReleaseVersion.zip" $offlineEntries $publicDir "v$ReleaseVersion"
+    $notes = "适用于 **Freebuff $($library.appVersions -join ' / ') / Windows x64**。`n`n**[点击下载汉化安装包]($($offlineAsset.url))** → 全部解压 → 双击 **安装.cmd**。`n`n下方 Source code 是源码，无需下载。`n`nSHA-256：``$($offlineAsset.sha256)```n"
+    [IO.File]::WriteAllText((Join-Path $OutputDir 'release-notes.md'),$notes,(New-Object Text.UTF8Encoding($false)))
+    Write-Output "PASS: 发行版 $ReleaseVersion，安装器 $installerVersion，翻译库 $($library.version)。"
+    Write-Output "输出：$OutputDir"
+    Write-Output ('正式发行版只上传“用户下载”中的 ZIP；“自动更新”中的文件发布到 {0}，并标记为预发布，不设为最新版本。' -f $updatesTag)
+    Write-Output "离线包 SHA-256：$($offlineAsset.sha256)"
+} finally {
+    $signer.Dispose()
+    if ($stage -and (Test-Path -LiteralPath $stage)) {
+        $resolvedStage = (Resolve-Path -LiteralPath $stage).Path
+        if ($resolvedStage.StartsWith($tempRoot + 'freebuff-zh-package-', [StringComparison]::OrdinalIgnoreCase) -and
+            (Split-Path -Parent $resolvedStage) -ieq $tempRoot.TrimEnd('\')) {
+            Remove-Item -LiteralPath $resolvedStage -Recurse -Force
+        }
+    }
 }
-$catalog = [ordered]@{schemaVersion=1;repository='Kfowever/freebuff-zh-patch';installer=$installerAsset;libraries=(@($libraryAsset) + $historical)}
-Test-ZhCatalog ([PSCustomObject]$catalog)
-Write-ZhJson $catalog (Join-Path $repo 'compatibility.json')
-Write-ZhJson $catalog (Join-Path $updatesDir 'compatibility.json')
-$signature = [Convert]::ToBase64String($signer.SignData([IO.File]::ReadAllBytes((Join-Path $repo 'compatibility.json')),'SHA256'))
-$signer.Dispose()
-foreach ($directory in @($repo,$updatesDir)) { [IO.File]::WriteAllText((Join-Path $directory 'compatibility.json.sig'),$signature,[Text.Encoding]::ASCII) }
-$offlineEntries = @($installerEntries) + @('compatibility.json','compatibility.json.sig' | ForEach-Object { [PSCustomObject]@{Name=$_;Source=(Join-Path $repo $_)} }) + @($libraryEntries | ForEach-Object { [PSCustomObject]@{Name=('library/' + $_.Name);Source=$_.Source} })
-$offlineAsset = Make-Zip "Freebuff-Setup-$installerVersion.zip" $offlineEntries $publicDir "v$installerVersion"
-$notes = "适用于 **Freebuff $($library.appVersions -join ' / ') / Windows x64**。`n`n**[点击下载汉化安装包]($($offlineAsset.url))** → 全部解压 → 双击 **安装.cmd**。`n`n下方 Source code 是源码，无需下载。`n`nSHA-256：``$($offlineAsset.sha256)```n"
-[IO.File]::WriteAllText((Join-Path $OutputDir 'release-notes.md'),$notes,(New-Object Text.UTF8Encoding($false)))
-Write-Output "PASS: 独立安装器 $installerVersion、翻译库 $($library.version)、兼容清单和离线整合包已生成。"
-Write-Output "输出：$OutputDir"
-Write-Output ('正式发行版只上传“用户下载”中的 ZIP；“自动更新”中的文件发布到 {0}，并标记为预发布，不设为最新版本。' -f $updatesTag)
-Write-Output "离线包 SHA-256：$($offlineAsset.sha256)"
