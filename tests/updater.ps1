@@ -60,9 +60,13 @@ Assert ($text.Contains($needle)) 'shipping process guard seam exists'
 [IO.File]::WriteAllText($enginePath,$text.Replace($needle,'$processes = @()'),$bom)
 $metadata.files.'FreebuffZhPatch.ps1'=Get-ZhHash $enginePath
 $isolatedStartup=@'
-function Set-ZhStartup([string]$SourceRoot,[string]$AppDir,[string]$StateRoot,[bool]$Enabled) {
-    Write-ZhJson @{enabled=$Enabled;appDir=$AppDir;installerRoot=$SourceRoot;installerVersion='0.11.6'} (Join-Path $StateRoot 'assistant-config.json')
+function Test-Path {
+    param($LiteralPath,$PathType)
+    if ($LiteralPath -like 'HKCU:*') { return $false }
+    Microsoft.PowerShell.Management\Test-Path @PSBoundParameters
 }
+function New-ItemProperty { throw 'The installer must not create a startup entry.' }
+function Start-Process { throw 'The installer must not launch a background process.' }
 Export-ModuleMember -Function *-Zh*
 '@
 # Integration child processes must not access the real user's registry.
@@ -99,13 +103,14 @@ $app=New-App 'compatible & 中文';$state=Join-Path $TestRoot 'state-compatible'
 & $module {$script:TestRunning=$true}
 $result=Check $app $state
 Assert ($result.state -eq 'Pending') "download while running is pending: $($result.message)"
+Assert ($result.message.Contains('再双击“检查更新.cmd”')) 'pending status explains how to apply manually'
 Assert ((Snapshot $app) -eq $before) 'pending update does not modify the app'
 Assert (Test-Path -LiteralPath (Join-Path $state 'libraries\0.10.7\library.json')) 'library downloaded and verified before pending status'
 & $module {$script:TestRunning=$false}
 $result=Check $app $state
 Assert ($result.state -eq 'Applied') "exit then apply: $($result.message)"
 $installed=Read-ZhJson (Join-Path $state 'manifest.json')
-Assert ($installed.InstallerVersion -eq '0.11.6' -and $installed.PatchVersion -eq '0.10.7') 'installer and library versions are independent'
+Assert ($installed.InstallerVersion -eq $catalog.installer.version -and $installed.PatchVersion -eq '0.10.7') 'installer and library versions are independent'
 $after=Snapshot $app;$result=Check $app $state
 Assert ($result.state -eq 'Current') "idempotent current status: $($result.message)"
 Assert ((Snapshot $app) -eq $after) 'current check leaves installed files unchanged'
@@ -197,6 +202,7 @@ Assert ($result.InstallerRoot -eq (Join-Path $handoffState 'assistant\versions\0
 $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Check -AppDir $app -StateDir $handoffState -CatalogPath $newIndex 2>&1
 Assert ($LASTEXITCODE -eq 0) "main script handoff exits successfully: $output"
 Assert ([IO.File]::ReadAllText((Join-Path $handoffState 'handoff-observed.txt')).StartsWith('Check|')) 'verified staged installer receives the check'
+Assert (-not(Read-ZhJson (Join-Path $handoffState 'assistant-config.json')).enabled) 'manual installer handoff leaves startup disabled'
 
 # A staged installer which cannot run must not replace the active installer.
 $failedRoot=Join-Path $TestRoot 'failing-installer';Copy-Item -LiteralPath $nextRoot -Destination $failedRoot -Recurse
@@ -214,7 +220,7 @@ $failedState=Join-Path $TestRoot 'state-failed-handoff'
 Write-ZhJson @{enabled=$true;installerRoot=$source;appDir=$app;installerVersion='0.11.6'} (Join-Path $failedState 'assistant-config.json')
 $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Check -AppDir $app -StateDir $failedState -CatalogPath $failedIndex 2>&1
 Assert ($LASTEXITCODE -eq 1) 'failed staged installer returns a failure'
-Assert ((Read-ZhJson (Join-Path $failedState 'assistant-config.json')).installerRoot -eq $source) 'failed installer handoff preserves active startup version'
+Assert ((Read-ZhJson (Join-Path $failedState 'assistant-config.json')).installerRoot -eq $source) 'failed installer handoff preserves active installer'
 Assert ((Snapshot $app) -eq $newSnapshot) 'failed installer handoff preserves the app'
 
 # Exercise the real network path with a transport double (no production test
@@ -292,63 +298,51 @@ Assert ((Get-ZhHash $slowArchive) -eq $catalog.libraries[0].sha256) 'slow direct
 Reject {Get-ZhArchive $catalog.libraries[0] (Join-Path $TestRoot 'state-all-down')} 'only report download failure after all routes fail'
 Assert ((& $module {$script:Requests.Count}) -eq 3) 'all three routes attempted before download failure'
 
-# Run one real watcher pass without GUI/registry side effects, then verify the
-# per-state mutex excludes a second watcher before any check.
+# An old installer can invoke Watch during its final handoff. The new
+# entry point must disable legacy startup and exit without checking or patching.
 Write-ZhJson @{enabled=$true;installerRoot=$source;appDir=$networkApp;installerVersion='0.11.6'} (Join-Path $networkState 'assistant-config.json')
-$output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Watch -Once -Offline -AppDir $networkApp -StateDir $networkState 2>&1
-Assert ($LASTEXITCODE -eq 0) "single offline watcher pass: $output"
-Assert ((Snapshot $networkApp) -eq $networkAfter) 'watcher does not rewrite an unchanged current app'
 $watchHash=Get-ZhHash (Join-Path $networkState 'assistant-status.json')
-$sha=[Security.Cryptography.SHA256]::Create();try{$id=([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($networkState.ToLowerInvariant())))).Replace('-','')}finally{$sha.Dispose()}
-$mutex=New-Object Threading.Mutex($true,('Local\FreebuffZhAssistant-'+$id))
-try{
-    $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Watch -Once -Offline -AppDir $networkApp -StateDir $networkState 2>&1
-    Assert ($LASTEXITCODE -eq 0) 'duplicate watcher exits cleanly'
-    Assert ((Get-ZhHash (Join-Path $networkState 'assistant-status.json')) -eq $watchHash) 'duplicate watcher performs no check'
-}finally{$mutex.ReleaseMutex();$mutex.Dispose()}
+$output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Watch -AppDir $networkApp -StateDir $networkState 2>&1
+Assert ($LASTEXITCODE -eq 0) "legacy Watch exits cleanly: $output"
+Assert (-not(Read-ZhJson (Join-Path $networkState 'assistant-config.json')).enabled) 'legacy watcher handoff disables startup'
+Assert ((Get-ZhHash (Join-Path $networkState 'assistant-status.json')) -eq $watchHash) 'legacy Watch performs no update check'
+Assert ((Snapshot $networkApp) -eq $networkAfter) 'legacy Watch leaves application files unchanged'
 
-# Restore also disables future automatic reapplication; no registry value in the
-# real user state can match this isolated test directory.
+$manualApp=New-App 'manual installation'
+$manualState=Join-Path $TestRoot 'state-manual'
+$output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Install -AppDir $manualApp -StateDir $manualState -CatalogPath (Join-Path $PackageDir 'compatibility.json') -Offline 2>&1
+Assert ($LASTEXITCODE -eq 0) "fresh install finishes without a watcher: $output"
+Assert (-not(Read-ZhJson (Join-Path $manualState 'assistant-config.json')).enabled) 'fresh install has no startup preference'
+Assert ((Read-ZhJson (Join-Path $manualState 'assistant-status.json')).state -eq 'Applied') 'fresh install still applies the library'
+
 Write-ZhJson @{enabled=$true;appDir=$app;installerRoot=$source;installerVersion='0.11.6'} (Join-Path $state 'assistant-config.json')
 $output=& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $source 'FreebuffZhSetup.ps1') -Action Restore -AppDir $app -StateDir $state 2>&1
 Assert ($LASTEXITCODE -eq 0) "restore succeeds: $output"
 Assert ((Snapshot $app) -eq $before) 'restore recovers original app bytes'
-Assert (-not(Read-ZhJson (Join-Path $state 'assistant-config.json')).enabled) 'restore disables auto update'
+Assert (-not(Read-ZhJson (Join-Path $state 'assistant-config.json')).enabled) 'restore disables the old watcher'
 
-# Validate quoting of the persistent command, including Chinese/ampersand paths.
-$command=Get-ZhCommand (Join-Path $source 'FreebuffZhSetup.ps1') $state $app
-Assert ($command.Contains('-WindowStyle Hidden') -and $command.Contains('-Action Watch') -and $command.Contains('"'+$state+'"')) 'startup command is hidden and correctly quoted'
-Reject {Get-ZhCommand 'bad"path' $state $app} 'invalid startup argument rejected'
-
-# The real startup function is exercised with a registry provider double.
+# Exercise legacy registry cleanup without touching the real user startup key.
 & $module {
     $script:RunValue='';$script:Removed=0
-    function script:Test-Path { param($LiteralPath,$Path) if($LiteralPath -like 'HKCU:*' -or $Path -like 'HKCU:*'){$true}else{Microsoft.PowerShell.Management\Test-Path @PSBoundParameters} }
-    function script:New-Item { param($Path,[switch]$Force) if($Path -notlike 'HKCU:*'){throw 'Unexpected registry-test write'} }
-    function script:New-ItemProperty { param($Path,$Name,$Value,$PropertyType,[switch]$Force) $script:RunValue=$Value }
-    function script:Get-ItemProperty { param($Path) [PSCustomObject]@{FreebuffZhAssistant=$script:RunValue} }
-    function script:Remove-ItemProperty { param($Path,$Name) $script:RunValue='';$script:Removed++ }
+    function script:Test-Path { param($LiteralPath,$PathType) if($LiteralPath -like 'HKCU:*'){$true}else{Microsoft.PowerShell.Management\Test-Path @PSBoundParameters} }
+    function script:Get-ItemProperty { param($LiteralPath) [PSCustomObject]@{FreebuffZhAssistant=$script:RunValue} }
+    function script:Remove-ItemProperty { param($LiteralPath,$Name) $script:RunValue='';$script:Removed++ }
+    function script:New-ItemProperty { throw 'Unexpected startup registration.' }
 }
-$startupState=Join-Path $TestRoot 'startup-state'
-$deployed=Install-ZhCache $source $startupState 'installer' '0.11.6'
-Set-ZhStartup $deployed $app $startupState $true
-$registered=& $module {$script:RunValue}
-Assert ($registered.Contains('-WindowStyle Hidden') -and $registered.Contains($deployed)) 'enable registers the deployed hidden watcher'
-Assert ((Read-ZhJson (Join-Path $startupState 'assistant-config.json')).enabled) 'enable persists its preference'
-Set-ZhStartup $deployed $app $startupState $false
-Assert ((& $module {$script:RunValue}) -eq '') 'disable removes its own startup entry'
-Assert (-not(Read-ZhJson (Join-Path $startupState 'assistant-config.json')).enabled) 'disable persists its preference'
-& $module {$script:RunValue='foreign program';$script:Removed=0}
-Set-ZhStartup $deployed $app $startupState $false
-Assert ((& $module {$script:RunValue}) -eq 'foreign program' -and (& $module {$script:Removed}) -eq 0) 'disable preserves an unrelated startup value'
+$startupState=Join-Path $TestRoot 'old state & 中文'
+[IO.Directory]::CreateDirectory($startupState)|Out-Null
+$oldInstaller=Join-Path $startupState 'assistant\versions\0.11.6'
+$legacyCommand='powershell.exe -WindowStyle Hidden -File "'+(Join-Path $oldInstaller 'FreebuffZhSetup.ps1')+'" -Action Watch -StateDir "'+$startupState+'"'
+& $module { param($Value) $script:RunValue=$Value } $legacyCommand
+$config=[PSCustomObject]@{enabled=$true;appDir=$app;installerRoot=$oldInstaller;installerVersion='0.11.6'}
+Disable-ZhLegacyStartup $startupState $config
+Assert ((& $module {$script:RunValue}) -eq '' -and (& $module {$script:Removed}) -eq 1) 'upgrade removes its old registry startup command'
+Assert (-not(Read-ZhJson (Join-Path $startupState 'assistant-config.json')).enabled) 'upgrade stops the old watcher through its preference'
+Disable-ZhLegacyStartup $startupState $config
+Assert ((& $module {$script:Removed}) -eq 1) 'repeated migration is harmless'
 
-# Persisting the preference is part of the startup transaction.
-$savedWriter=& $module {${function:Write-ZhJson}}
-& $module {function script:Write-ZhJson {param($Object,$Path) throw 'Synthetic configuration write failure'}}
-try {
-    Reject {Set-ZhStartup $deployed $app $startupState $true} 'preference write failure is reported'
-    Assert ((& $module {$script:RunValue}) -eq 'foreign program') 'startup value rolled back when preference cannot be written'
-    Assert (-not(Read-ZhJson (Join-Path $startupState 'assistant-config.json')).enabled) 'failed enable preserves previous preference'
-} finally { & $module {param($Writer) Set-Item Function:script:Write-ZhJson $Writer} $savedWriter }
+& $module { $script:RunValue='foreign program' }
+Disable-ZhLegacyStartup $startupState $config
+Assert ((& $module {$script:RunValue}) -eq 'foreign program') 'cleanup preserves an unrelated startup command'
 
 Write-Output "PASS: $script:assertions updater assertions. Evidence: $TestRoot"

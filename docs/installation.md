@@ -2,11 +2,11 @@
 
 ## 日常入口
 
-`安装.cmd` 安装或更新助手；`检查更新.cmd` 检查匹配版本；`查看状态.cmd` 查看状态；`关闭自动更新.cmd` 关闭后台检查与登录启动；`恢复英文.cmd` 先关闭自动更新，再还原文件。源码中仍保留旧英文入口。
+`安装.cmd` 安装汉化，`检查更新.cmd` 检查匹配版本，`查看状态.cmd` 查看状态，`恢复英文.cmd` 还原文件。源码中仍保留旧英文入口。
 
-首次安装将程序复制到 `%LOCALAPPDATA%\FreebuffZhPatch\assistant\versions\安装器版本`，翻译库放在 `libraries\翻译库版本`。登录启动只使用当前用户 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 中的 `FreebuffZhAssistant`，不需要管理员权限。关闭后，驻留进程在一分钟内退出。历史程序、翻译库和应用备份均保留。
+程序保存在 `%LOCALAPPDATA%\FreebuffZhPatch\assistant\versions\安装器版本`，翻译库保存在 `libraries\翻译库版本`。升级时会移除旧助手的登录自启项，并让旧后台进程退出。历史程序、翻译库和应用备份均保留。
 
-后台每 60 秒检测应用版本；启动时和每 6 小时检查 GitHub，新版本或待应用更新会提前处理。联网或应用检查失败后约 10 分钟重试。应用运行中只下载、校验并显示提示，退出后再应用，不强杀进程。点击通知可查看中文说明和发布、Issue 入口；不会自动提交 Issue。
+更新由用户手动发起。如果检查时 Freebuff 正在运行，助手会先下载并校验翻译库。退出 Freebuff 后，再运行 `检查更新.cmd` 应用。
 
 ## 命令行
 
@@ -14,14 +14,12 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Action Install
 powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Action Check
 powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Action Status
-powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Action Disable
-powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Action Enable
 powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhSetup.ps1 -Action Restore
 ```
 
 `-AppDir` 指定安装位置，`-StateDir` 指定独立状态与备份目录；后续调用须使用同一状态目录。`-Interactive` 启用位置选择和状态窗口，`-Offline` 只使用本地兼容清单和缓存；缺少所需包时仍需先提供包。`-CatalogPath` 可显式选择本地兼容清单，同目录的匹配 ZIP 会优先读取并校验，用于离线维护和测试。日常用户无需这些参数。
 
-底层 `FreebuffZhPatch.ps1 -Action Install|Restore|Status -LibraryDir 路径` 只处理本机文件，不联网；默认库位于旁边的 `library` 目录。保留旧版 `-Force` 交互确认供人工排查，**更新助手从不使用此开关**。直接使用底层引擎前应关闭自动更新，以免与后台操作并发。
+底层 `FreebuffZhPatch.ps1 -Action Install|Restore|Status -LibraryDir 路径` 只处理本机文件，不联网；默认库位于旁边的 `library` 目录。保留旧版 `-Force` 交互确认供人工排查，**更新助手从不使用此开关**。
 
 如需在未列入兼容清单的版本上手动尝试，先退出 Freebuff，在解压后的安装包目录打开 PowerShell 并运行：
 
@@ -42,7 +40,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\FreebuffZhPatch.ps1 -Actio
 - `library/profiles/应用版本.json`：应用结构适配数据，启动和在线工作区的替换文本须保持相同 UTF-8 字节长度；界面译文位于 `library/freebuff-zh-cn.js`。
 - `compatibility.json`：仓库发布清单，列出安装器及各翻译库的版本、GitHub Release URL、大小、ZIP 哈希、内部版本清单哈希和支持版本。只在明确相等的应用版本中选择最新库。
 
-更新助手仅接受本项目 GitHub Releases 的 HTTPS 包地址，验证下载大小、SHA-256、内部版本和文件哈希；解压仅允许规定文件，拒绝目录穿越、链接和重复条目。程序与库使用独立版本目录，校验后才提升为可用版本，保留旧目录。新版安装器先运行检查流程，通过后才切换登录启动入口；未通过时保留旧安装器。库不匹配、下载中断、校验错误、应用再次更新或备份链异常时，不写入不匹配补丁。
+更新助手仅接受本项目 GitHub Releases 的 HTTPS 包地址，验证下载大小、SHA-256、内部版本和文件哈希；解压仅允许规定文件，拒绝目录穿越、链接和重复条目。程序与库使用独立版本目录，校验后才提升为可用版本，保留旧目录。新版安装器通过检查后才会记录为当前版本。库不匹配、下载中断、校验错误、应用再次更新或备份链异常时，不写入不匹配补丁。
 
 兼容清单使用本项目的 HTTPS 主分支地址，不需要 GitHub 登录或令牌。无法联网时优先使用校验通过的缓存；未知版本与过期清单不能据此断言远端没有更新。当前版本较新时不自动降级。
 

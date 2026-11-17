@@ -241,14 +241,14 @@ function Get-ZhArchive($Asset, [string]$StateRoot, [string]$LocalDirectory = '',
         return $path
     } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp -Force } }
 }
-function Get-ZhCatalog([string]$StateRoot, [string]$SourceRoot, [string]$CatalogPath = '', [switch]$Offline, [switch]$PreferCache) {
+function Get-ZhCatalog([string]$StateRoot, [string]$SourceRoot, [string]$CatalogPath = '', [switch]$Offline) {
     if ($CatalogPath) {
         $data = Read-ZhJson $CatalogPath; Test-ZhCatalog $data
         Write-ZhJson $data (Join-Path $StateRoot 'catalog.json')
         return [PSCustomObject]@{ Data=$data; Fresh=$true; LocalDirectory=(Split-Path -Parent ([IO.Path]::GetFullPath($CatalogPath))); Error='' }
     }
     $cache = Join-Path $StateRoot 'catalog.json'; $errorMessage = ''
-    if (-not $Offline -and -not $PreferCache) {
+    if (-not $Offline) {
         try {
             $failures = @(); $routeIndex = 0
             foreach ($route in @(Get-ZhRoutes $script:CatalogUrl)) {
@@ -327,7 +327,7 @@ function Invoke-ZhEngine([string]$SourceRoot, [string]$LibraryRoot, [string]$App
     if ($code -ne 0) { throw ($result -join "`n") }
     return $result -join "`n"
 }
-function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot, [string]$CatalogPath = '', [switch]$Offline, [switch]$PreferCache, [switch]$CloseRunningApp) {
+function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot, [string]$CatalogPath = '', [switch]$Offline, [switch]$CloseRunningApp) {
     [IO.Directory]::CreateDirectory($StateRoot) | Out-Null
     $lock = $null
     try {
@@ -335,7 +335,7 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
         catch { return [PSCustomObject]@{ state='Busy'; message='另一项汉化检查正在进行，请稍后再试。'; appVersion=''; libraryVersion='' } }
         $appVersion = Get-ZhAppVersion $AppDir
         $current = Test-ZhInstaller $SourceRoot
-        $catalog = Get-ZhCatalog $StateRoot $SourceRoot $CatalogPath -Offline:$Offline -PreferCache:$PreferCache
+        $catalog = Get-ZhCatalog $StateRoot $SourceRoot $CatalogPath -Offline:$Offline
         $selected = @(Select-ZhLibrary $catalog.Data $appVersion)
         # Installer code is a separately versioned, hash-checked package. A staged
         # installer takes over only after this operation releases its file lock.
@@ -375,7 +375,7 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
                 if (@($previousLibrary.appVersions) -cnotcontains $appVersion -or
                     (Get-ZhHash (Join-Path $AppDir 'resources\orchestrator\ui\assets\freebuff-zh-cn.js')) -cne $previousLibrary.files.'freebuff-zh-cn.js' -or
                     (Get-ZhHash (Join-Path $AppDir 'resources\orchestrator\ui\index.html')) -cne $previous.PatchedIndexHash -or
-                    (Get-ZhHash (Join-Path $AppDir 'resources\app.asar')) -cne $previous.PatchedAppAsarHash) { throw '本机较新的翻译库状态不完整，已停止自动更新以保留现有文件。' }
+                    (Get-ZhHash (Join-Path $AppDir 'resources\app.asar')) -cne $previous.PatchedAppAsarHash) { throw '本机较新的翻译库状态不完整，已停止更新以保留现有文件。' }
                 return Set-ZhStatus $StateRoot 'Current' "本机已有较新的匹配翻译库 $($previous.PatchVersion)，保留当前版本，不自动降级。" $appVersion $previous.PatchVersion $catalog.Fresh
             }
         }
@@ -399,12 +399,12 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
             }
         }
         if (-not $CloseRunningApp -and @(Get-Process -Name Freebuff -ErrorAction SilentlyContinue).Count -gt 0) {
-            return Set-ZhStatus $StateRoot 'Pending' "适配 Freebuff $appVersion 的翻译库 $($item.version) 已下载并校验。请退出 Freebuff，助手会自动应用。" $appVersion $item.version $catalogFresh
+            return Set-ZhStatus $StateRoot 'Pending' ("适配 Freebuff $appVersion 的翻译库 $($item.version) 已下载并校验。" + '请退出 Freebuff，再双击“检查更新.cmd”应用。') $appVersion $item.version $catalogFresh
         }
         try { [void](Invoke-ZhEngine $SourceRoot $libraryRoot $AppDir $StateRoot 'Install' -CloseRunningApp:$CloseRunningApp) }
         catch {
             if ($_.Exception.Message.Contains('Freebuff 正在运行')) {
-                return Set-ZhStatus $StateRoot 'Pending' '翻译库已准备好。Freebuff 尚未退出，退出后会自动应用。' $appVersion $item.version $catalogFresh
+                return Set-ZhStatus $StateRoot 'Pending' '翻译库已准备好。Freebuff 尚未退出，退出后请双击“检查更新.cmd”应用。' $appVersion $item.version $catalogFresh
             }
             throw
         }
@@ -413,36 +413,25 @@ function Invoke-ZhCheck([string]$SourceRoot, [string]$AppDir, [string]$StateRoot
         return Set-ZhStatus $StateRoot 'Failed' ("检查或应用未完成：" + $_.Exception.Message) $(if ($AppDir) { try { Get-ZhAppVersion $AppDir } catch { '' } } else { '' })
     } finally { if ($null -ne $lock) { $lock.Dispose() } }
 }
-function Get-ZhCommand([string]$Script, [string]$StateRoot, [string]$AppDir, [string]$Action = 'Watch') {
-    foreach ($value in @($Script,$StateRoot,$AppDir)) { if ($value.Contains('"') -or $value.Contains("`n") -or $value.Contains("`r")) { throw '启动参数包含无效字符。' } }
-    return '-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $Script.TrimEnd('\') + '" -Action ' + $Action + ' -StateDir "' + $StateRoot.TrimEnd('\') + '" -AppDir "' + $AppDir.TrimEnd('\') + '"'
-}
-function Set-ZhStartup([string]$SourceRoot, [string]$AppDir, [string]$StateRoot, [bool]$Enabled) {
-    $metadata = Test-ZhInstaller $SourceRoot
-    $config = [ordered]@{ enabled=$Enabled; appDir=$AppDir; installerVersion=$metadata.version; installerRoot=$SourceRoot; pollSeconds=60; checkHours=6 }
+function Disable-ZhLegacyStartup([string]$StateRoot, $Config) {
+    # The old watcher stops when it next reads this preference.
+    if (Get-ZhValue $Config 'enabled' $false) {
+        $Config.enabled = $false
+        Write-ZhJson $Config (Join-Path $StateRoot 'assistant-config.json')
+    }
     $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-    $previous = if (Test-Path -LiteralPath $key) { [string](Get-ZhValue (Get-ItemProperty -Path $key) 'FreebuffZhAssistant' '') } else { '' }
-    try {
-        if ($Enabled) {
-            if (-not (Test-Path -LiteralPath $key)) { New-Item -Path $key -Force | Out-Null }
-            $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
-            $command = '"' + $powershell + '" ' + (Get-ZhCommand (Join-Path $SourceRoot 'FreebuffZhSetup.ps1') $StateRoot $AppDir)
-            New-ItemProperty -Path $key -Name 'FreebuffZhAssistant' -Value $command -PropertyType String -Force | Out-Null
-        } elseif ($previous -and $previous.Contains((Join-Path $StateRoot 'assistant\versions'))) {
-            Remove-ItemProperty -Path $key -Name 'FreebuffZhAssistant'
-        }
-        Write-ZhJson $config (Join-Path $StateRoot 'assistant-config.json')
-    } catch {
-        try {
-            if ($previous) { New-ItemProperty -Path $key -Name 'FreebuffZhAssistant' -Value $previous -PropertyType String -Force | Out-Null }
-            elseif (Test-Path -LiteralPath $key) { Remove-ItemProperty -Path $key -Name 'FreebuffZhAssistant' -ErrorAction SilentlyContinue }
-        } catch { }
-        throw
+    if (-not (Test-Path -LiteralPath $key)) { return }
+    $command = [string](Get-ZhValue (Get-ItemProperty -LiteralPath $key) 'FreebuffZhAssistant' '')
+    $versions = '"' + (Join-Path $StateRoot 'assistant\versions') + '\'
+    if ($command.IndexOf($versions, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and
+        $command -match '\\FreebuffZhSetup\.ps1"\s+-Action\s+Watch\b') {
+        Remove-ItemProperty -LiteralPath $key -Name 'FreebuffZhAssistant'
     }
 }
-function Start-ZhWatcher([string]$SourceRoot, [string]$StateRoot, [string]$AppDir) {
-    $arguments = Get-ZhCommand (Join-Path $SourceRoot 'FreebuffZhSetup.ps1') $StateRoot $AppDir
-    Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') -ArgumentList $arguments -WindowStyle Hidden | Out-Null
+function Save-ZhInstaller([string]$SourceRoot, [string]$AppDir, [string]$StateRoot) {
+    $metadata = Test-ZhInstaller $SourceRoot
+    $config = [ordered]@{ enabled=$false; appDir=$AppDir; installerVersion=$metadata.version; installerRoot=$SourceRoot }
+    Write-ZhJson $config (Join-Path $StateRoot 'assistant-config.json')
 }
 function Show-ZhNotice($Status) {
     Add-Type -AssemblyName System.Windows.Forms

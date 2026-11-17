@@ -44,7 +44,7 @@ $updatesDir = Join-Path $OutputDir '自动更新'
 $publicDir = Join-Path $OutputDir '用户下载'
 [IO.Directory]::CreateDirectory($updatesDir) | Out-Null
 [IO.Directory]::CreateDirectory($publicDir) | Out-Null
-$installerFiles = @('FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','安装.cmd','恢复英文.cmd','检查更新.cmd','查看状态.cmd','关闭自动更新.cmd','README.md','LICENSE')
+$installerFiles = @('FreebuffZhSetup.ps1','FreebuffZhAssistant.psm1','FreebuffZhPatch.ps1','安装.cmd','恢复英文.cmd','检查更新.cmd','查看状态.cmd','README.md','LICENSE')
 function Make-Zip([string]$Name, $Files, [string]$Directory = $updatesDir, [string]$Tag = $updatesTag) {
     $archive = Join-Path $Directory $Name
     if (Test-Path -LiteralPath $archive) { throw "请使用新的输出目录，避免覆盖已有安装包：$archive" }

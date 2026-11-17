@@ -1,16 +1,15 @@
 {
     "schemaVersion":  1,
-    "version":  "0.11.6",
+    "version":  "0.11.9",
     "files":  {
-                  "FreebuffZhSetup.ps1":  "a8416b3b8559809d5242e9fc3ff46d8f743b3ff8d122fd13ae156cdaa262670a",
-                  "FreebuffZhAssistant.psm1":  "1b6e7b2ed2dc70623adb75f36d285b76d166cb75040e3681b4db775d9762d824",
-                  "FreebuffZhPatch.ps1":  "ea12d1172f906b2e81e937f5fd4ede19dffa4735664b40f730b03c95596471f6",
+                  "FreebuffZhSetup.ps1":  "6b9f27016ee4a0e323cb68d612fa407a074682a67262d195ff0f1e9dffae299b",
+                  "FreebuffZhAssistant.psm1":  "9791748c6299c84de376ad51ddacea182fabac668bb112817a7b97889cbd44a0",
+                  "FreebuffZhPatch.ps1":  "e0808dd7d3682ad5ed8c7c174a079ec5af405f00ae8c10d7aac057a9c7510ac3",
                   "安装.cmd":  "233416dc9971b10be46539f4e6f0d2d8d0c52c26c9aeac6bb9d4915cbccec7fd",
                   "恢复英文.cmd":  "79e1ae47b403bb32a7d3979452baa294113f2063ddd3f6986ed1562a94273738",
                   "检查更新.cmd":  "3f13a0a90f20e19d7f2b7ca263261278c10be7cb9a7bc27fbfde55dcac726f9d",
                   "查看状态.cmd":  "cfb5f769467303b137294193cbc784275c58482a0dd4531cc9d166a06b98dc7c",
-                  "关闭自动更新.cmd":  "5e3cf410267f927ed119b77d704c34d16aef304f8b2c5767ab8b8833dad3ad5f",
-                  "README.md":  "b83c723c00ebc4fd31d6440ff3b5f396c9267f5b3464c05f0b47733bd423af51",
+                  "README.md":  "cb1bbbe0216b0aabbe6510250c3f336d03e4219030baa0275e681d5fdf2c5dc3",
                   "LICENSE":  "1f305ff908a4b961e9f7a6a4e42a9246039c11bc938e46c09c193d869352f9f4"
               }
 }
