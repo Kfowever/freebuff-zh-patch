@@ -453,4 +453,78 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   equal(daily.textContent.trim(), '每日 40 小时', 'settings dynamic split daily allowance')
   equal(wallet.textContent.replace(/\s+，/, '，').trim(), '每月奖励 100 小时钱包额度，未用部分不结转', 'settings dynamic split wallet allowance')
 }
+{
+  const root = element('main')
+  const command = 'cmd.exe /c echo "$& · local"'
+  const local = element('small', root, { class: 'workspace-custom-mcp-host', title: command })
+  const remote = element('small', root, { class: 'workspace-custom-mcp-host' })
+  const conversation = element('div', root, { class: 'bubble' })
+  const remoteCount = 'My computer · 1 tool'
+  local.textContent = `This computer · 189 tools, none reach chats · ${command}`
+  remote.textContent = remoteCount
+  conversation.textContent = local.textContent
+  root.childNodes.push(local, remote, conversation)
+  const { onMutation } = boot(root)
+  equal(local.textContent, `此电脑 · 189 个工具，聊天可用 0 个 · ${command}`, 'MCP tools excluded from chats')
+  equal(local.getAttribute('title'), command, 'MCP command title preserved')
+  equal(remote.textContent, 'My computer · 1 个工具', 'remote MCP device name preserved')
+  equal(conversation.textContent, `This computer · 189 tools, none reach chats · ${command}`, 'MCP label in user content preserved')
+  local.childNodes[0].nodeValue = `This computer · 189 tools, 42 reach chats · ${command}`
+  onMutation([{ type: 'characterData', target: local.childNodes[0] }])
+  equal(local.textContent, `此电脑 · 189 个工具，聊天可用 42 个 · ${command}`, 'MCP published tool count updates')
+  local.childNodes[0].nodeValue = `This computer · 1 tool · ${command}`
+  onMutation([{ type: 'characterData', target: local.childNodes[0] }])
+  equal(local.textContent, `此电脑 · 1 个工具 · ${command}`, 'MCP tools all available')
+}
+{
+  const root = element('main')
+  const code = element('button', root, { class: 'workspace-mode-toggle-option' })
+  const chat = element('button', root, { class: 'workspace-mode-toggle-option' })
+  const project = element('span', root, { class: 'sidebar-project-title' })
+  const preview = element('span', root, { class: 'run-stretch-label' })
+  const activity = element('span', root, { class: 'run-stretch-label' })
+  const composer = element('div', root, { class: 'composer-input', contenteditable: 'true', 'data-composer-input': '',
+    'data-placeholder': 'Ask Freebuff… Use / for commands, @ for files', 'aria-label': 'Message Freebuff' })
+  const balance = element('div', root, { class: 'sidebar-balance', 'aria-label': 'Daily hours: 5:00 of 5:00 remaining',
+    'data-tooltip': "5:00 left of today's 5:00. Daily hours refill each day and don't carry over." })
+  const todoRow = element('button', root, { class: 'tool-row-head' })
+  const todoName = element('span', todoRow, { class: 'act-name' })
+  const todo = element('span', todoRow, { class: 'act-arg', title: '0/7 done' })
+  const readRow = element('button', root, { class: 'run-stretch-toggle' })
+  const readName = element('span', readRow, { class: 'act-name' })
+  const readPath = element('span', readRow, { class: 'act-arg', title: '0/7 done' })
+  code.textContent = 'Code'
+  chat.textContent = 'Chat'
+  project.textContent = 'Chats'
+  preview.textContent = 'Read files, but keep this filename.'
+  activity.textContent = 'Read files, ran a command'
+  composer.textContent = 'Thought'
+  todoName.textContent = 'To-dos'
+  todo.textContent = '0/7 done'
+  readName.textContent = 'Read'
+  readPath.textContent = '0/7 done'
+  todoRow.childNodes.push(todoName, todo)
+  readRow.childNodes.push(readName, readPath)
+  root.childNodes.push(code, chat, project, preview, activity, composer, balance, todoRow, readRow)
+  const { onMutation } = boot(root)
+  equal(code.textContent, '代码', 'workspace Code mode')
+  equal(chat.textContent, '聊天', 'workspace Chat mode')
+  equal(project.textContent, 'Chats', 'project name stays unchanged')
+  equal(preview.textContent, 'Read files, but keep this filename.', 'free-form streaming preview stays unchanged')
+  equal(activity.textContent, '读取了文件，运行了命令', 'combined tool activity')
+  equal(composer.getAttribute('data-placeholder'), '向 Freebuff 提问…输入 / 查看命令，输入 @ 搜索文件', 'composer command and files hint')
+  equal(composer.getAttribute('aria-label'), '发送给 Freebuff', 'composer accessible label')
+  equal(composer.textContent, 'Thought', 'composer draft stays unchanged')
+  equal(balance.getAttribute('aria-label'), '每日小时额度：剩余 5:00 / 5:00（时:分）', 'clock balance accessible label')
+  equal(balance.getAttribute('data-tooltip'), '今日额度剩余 5:00 / 5:00（时:分）。每日小时额度每天补充，不会结转。', 'clock balance tooltip')
+  equal(todo.textContent, '已完成 0/7 项', 'todo tool progress')
+  equal(todo.getAttribute('title'), '已完成 0/7 项', 'todo progress tooltip')
+  equal(readPath.textContent, '0/7 done', 'matching file path stays unchanged')
+  equal(readPath.getAttribute('title'), '0/7 done', 'matching file path title stays unchanged')
+  todo.childNodes[0].nodeValue = '3/7 done'
+  activity.childNodes[0].nodeValue = 'Read files, ran a tool'
+  onMutation([{ type: 'characterData', target: todo.childNodes[0] }, { type: 'characterData', target: activity.childNodes[0] }])
+  equal(todo.textContent, '已完成 3/7 项', 'dynamic todo tool progress')
+  equal(activity.textContent, '读取了文件，使用了工具', 'dynamic combined tool activity')
+}
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)

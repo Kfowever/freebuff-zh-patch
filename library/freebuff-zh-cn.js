@@ -6,7 +6,7 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.10.5'
+  const PATCH_VERSION = '0.10.7'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
@@ -506,6 +506,11 @@
       "Appearance has not synced yet. Your local settings are kept; retrying automatically.": "外观设置尚未同步。本地设置已保留，系统会自动重试。",
       "Appearance is still syncing. Please wait before editing.": "外观设置仍在同步，请稍候再编辑。",
       "Ask Freebuff… Use / for commands": "向 Freebuff 提问…输入 / 查看命令",
+      "Ask Freebuff": "向 Freebuff 提问",
+      "Ask Freebuff… Use / for commands, @ for files": "向 Freebuff 提问…输入 / 查看命令，输入 @ 搜索文件",
+      "Ask Freebuff... Use / for commands, @ for files": "向 Freebuff 提问…输入 / 查看命令，输入 @ 搜索文件",
+      "Workspace mode": "工作区模式",
+      "Thought": "思考",
       "Attach up to four images and five documents.": "最多可附加 4 张图片和 5 份文档。",
       "Batch name": "批次名称",
       "Batch runs": "批次运行",
@@ -3395,6 +3400,15 @@
       'Open project': '打开项目',
       'Open project…': '打开项目…',
       'Start your streak': '开始连续使用',
+      'Start a streak': '开始连续使用',
+      'Send a message today to start one.': '今天发送一条消息，开始连续使用。',
+      'Send a message today to keep your streak.': '今天发送一条消息，延续你的连续使用记录。',
+      'You’re on fire today. Come back tomorrow to keep it going.': '今天已完成，明天再来延续记录吧！',
+      'A theme lit by your streak. It’s yours to keep.': '连续使用解锁的主题，可永久保留。',
+      'Unlocking with your streak…': '正在根据连续使用记录解锁…',
+      'Unlocking…': '正在解锁…',
+      '✓ In use': '✓ 使用中',
+      'Keep it going': '继续保持',
       'Threads you close land here.': '你关闭的任务会显示在这里。',
       'Thread catalog': '任务目录',
       Active: '进行中',
@@ -4253,6 +4267,35 @@
       "Auto-renew sessions": "自动续订会话",
       "Custom MCP": "自定义 MCP",
       "Retry custom MCPs": "重试自定义 MCP",
+      "Custom MCP servers": "自定义 MCP 服务器",
+      "Where the MCP server runs": "MCP 服务器运行位置",
+      "Remote URL": "远程 URL",
+      "MCP name": "MCP 名称",
+      "MCP command or local URL": "MCP 命令或本地 URL",
+      "MCP environment variables": "MCP 环境变量",
+      "Environment variables (optional)\nAPI_KEY=…": "环境变量（可选）\nAPI_KEY=…",
+      "Runs on this computer. Every chat on your account can use its tools while Freebuff is open here.": "在此电脑上运行。只要 Freebuff 在此电脑上保持打开，你账户中的所有聊天都可以使用这些工具。",
+      "One computer can offer chats about 256 KB of MCP tools. Turn off a server you don’t need here to make room for the rest.": "一台电脑可以向聊天提供约 256 KB 的 MCP 工具定义。关闭此处用不到的服务器，为其他服务器腾出空间。",
+      "Freebuff doesn’t accept MCP servers from your computers yet": "Freebuff 目前还不接受来自你电脑的 MCP 服务器",
+      "this account can’t connect its computers to chats": "此账户暂时无法将电脑连接到聊天",
+      "this computer’s MCP list is too large for Freebuff to accept": "此电脑的 MCP 列表过大，Freebuff 无法接收",
+      "Freebuff didn’t accept this computer’s MCP list (HTTP 400)": "Freebuff 未接受此电脑的 MCP 列表（HTTP 400）",
+      "Freebuff didn’t answer in time": "Freebuff 响应超时",
+      "this computer couldn’t reach Freebuff": "此电脑无法连接到 Freebuff",
+      "Background task": "后台任务",
+      "Background command": "后台命令",
+      "This Codex can’t roll back to that message. Update Codex, then send again.": "此 Codex 版本无法回滚到该消息。请更新 Codex 后重新发送。",
+      "A promotional price that goes up when the promotion ends. Open with a US connection or a paid plan. One session a day on every plan.": "促销结束后价格会上涨。通过美国网络或订阅付费方案即可使用。所有方案每天可开启一次会话。",
+      "Runs on DeepSeek’s own API.": "使用 DeepSeek 自有 API。",
+      "OpenAI · 2 sessions a day": "OpenAI · 每天 2 个会话",
+      "1 per day": "每天 1 次",
+      "2 per day": "每天 2 次",
+      "Streak Fire": "连续使用火焰",
+      "Gold Streak Fire": "金色连续使用火焰",
+      "White Streak Fire": "白色连续使用火焰",
+      "Blue Streak Fire": "蓝色连续使用火焰",
+      "Plasma Streak Fire": "等离子连续使用火焰",
+      "Rainbow Streak Fire": "彩虹连续使用火焰",
       "Toggle files": "切换文件面板",
       "Continue this project in Desktop": "在桌面版中继续此项目",
       "Resume mission": "继续任务",
@@ -4422,6 +4465,21 @@
   }
 
   const patterns = [
+    [/^(\d+)-day streak(!)?$/, (_match, days, emphatic) => `连续使用 ${days} 天${emphatic ? '！' : ''}`],
+    [/^(\d+) days in a row!$/, '已连续使用 $1 天！'],
+    [/^(\d+) more days? to a (\d+)-day streak\.$/, '再坚持 $1 天，即可达成连续使用 $2 天。'],
+    [/^Unlock the ((?:(?:Gold|White|Blue|Plasma|Rainbow) )?Streak Fire) theme$/, (_match, theme) => `解锁“${translateValue(theme)}”主题`],
+    [/^((?:(?:Gold|White|Blue|Plasma|Rainbow) )?Streak Fire) theme unlocked$/, (_match, theme) => `已解锁“${translateValue(theme)}”主题`],
+    [/^Use ((?:(?:Gold|White|Blue|Plasma|Rainbow) )?Streak Fire)$/, (_match, theme) => `使用“${translateValue(theme)}”主题`],
+    [/^(\d+) of (\d+) days, days (\d+) to (\d+)$/, '已完成 $1/$2 天，第 $3 至 $4 天'],
+    [/^Day (\d+): done$/, '第 $1 天：已完成'],
+    [/^Day (\d+): today$/, '第 $1 天：今天'],
+    [/^(Collapse|Expand) thinking details(?:: (.+))?$/, (_match, action, preview) => `${action === 'Expand' ? '展开' : '收起'}思考详情${preview ? `：${preview}` : ''}`],
+    [/^Daily hours: ([\d,]+:[0-5]\d) of ([\d,]+:[0-5]\d) remaining( \(last known\))?$/, (_match, left, limit, stale) =>
+      `每日小时额度：剩余 ${left} / ${limit}（时:分）${stale ? '，上次记录' : ''}`],
+    [/^Chats can’t use the MCP servers on this computer yet: (.+)\. Freebuff keeps trying\.$/, (_match, reason) => `聊天暂时无法使用此电脑上的 MCP 服务器：${translateValue(reason)}。Freebuff 会继续尝试。`],
+    [/^Freebuff asked this computer to connect again \(HTTP (\d{3})\)$/, 'Freebuff 要求此电脑重新连接（HTTP $1）'],
+    [/^Freebuff refused this computer’s connection \(HTTP (\d{3})\)$/, 'Freebuff 拒绝了此电脑的连接（HTTP $1）'],
     [/^Invite sent to (.+)$/, '邀请已发送至 $1'],
     [/^Couldn’t copy\. Your link: (.+)$/, '无法复制。你的链接：$1'],
     [/^Forks of (.+)$/, '$1 的分支聊天'],
@@ -5229,15 +5287,36 @@
     // These tooltips concatenate several independently translated sentences.
     // Parse the known balance contract as a whole so no bonus or stale-balance
     // notice disappears, and preserve unknown future formats unchanged.
-    const daily = value.match(/^([\d,]+) hours? left of today's ([\d,]+)\. Daily hours refill each day and don't carry over\./)
+    const daily = value.match(/^([\d,]+(?::[0-5]\d)?)(?: hours?)? left of today's ([\d,]+(?::[0-5]\d)?)\./)
     const walletBase = 'Bought hours and your plan bonus. Spent after your daily hours.'
     const wallet = value.startsWith(walletBase)
     if (!daily && !wallet) return null
 
     let rest = value.slice(daily ? daily[0].length : walletBase.length).trim()
+    const staleNotice = 'Last known balance; refreshing.'
+    const staleTranslation = '当前为上次确认的余额，正在刷新。'
     const parts = [daily
-      ? `今日 ${daily[2]} 小时额度中剩余 ${daily[1]} 小时。每日小时额度每天补充，不会结转。`
+      ? daily[2].includes(':')
+        ? `今日额度剩余 ${daily[1]} / ${daily[2]}（时:分）。`
+        : `今日 ${daily[2]} 小时额度中剩余 ${daily[1]} 小时。`
       : exact.get(walletBase)]
+
+    if (daily) {
+      const dailyNotices = [
+        ["A running session's hours count down as its hour runs.", '进行中的会话会随时间消耗额度。'],
+        ['The accounts on this device share one daily allowance.', '此设备上的账户共用每日限额。'],
+        [staleNotice, staleTranslation],
+      ]
+      for (const [notice, translated] of dailyNotices) {
+        if (!rest.startsWith(notice)) continue
+        parts.push(translated)
+        rest = rest.slice(notice.length).trim()
+      }
+      const refill = "Daily hours refill each day and don't carry over."
+      if (!rest.startsWith(refill)) return null
+      parts.push('每日小时额度每天补充，不会结转。')
+      rest = rest.slice(refill.length).trim()
+    }
 
     const bonus = daily
       ? rest.match(/^Includes today's \+([\d,]+) hours? streak bonus: the streak adds to the daily pool, never the wallet\./)
@@ -5249,9 +5328,8 @@
       rest = rest.slice(bonus[0].length).trim()
     }
 
-    const staleNotice = 'Last known balance; refreshing.'
     if (rest.startsWith(staleNotice)) {
-      parts.push('当前为上次确认的余额，正在刷新。')
+      parts.push(staleTranslation)
       rest = rest.slice(staleNotice.length).trim()
     }
 
@@ -5285,6 +5363,13 @@
 
   function translateProtectedUiLabel(node, parent) {
     const key = node.nodeValue.trim()
+    if (isTodoToolArgument(parent)) {
+      const translated = translateTodoProgress(node.nodeValue)
+      if (translated === node.nodeValue) return false
+      node.nodeValue = translated
+      stats.contextual += 1
+      return true
+    }
     let permittedSelector
     const title = parent.closest?.('.sidebar-thread-title, .tab-title')
     // The conventional empty-chat label is UI only in native chat surfaces.
@@ -5333,6 +5418,32 @@
   // the dedicated app-owned label, never the adjoining .act-arg/output.
   const toolNameLabels = { Search: '搜索', Read: '读取', Run: '运行' }
   const toolStatusLabels = { success: '成功', failure: '失败', running: '运行中' }
+  const runSummaries = {
+    'ran a command': '运行了命令',
+    'ran commands': '运行了多条命令',
+    'read a file': '读取了文件',
+    'read files': '读取了文件',
+    'edited a file': '编辑了文件',
+    'edited files': '编辑了文件',
+    'used the browser': '使用了浏览器',
+    'compacted context': '压缩了上下文',
+    'ran a tool': '使用了工具',
+    'ran tools': '使用了多个工具',
+  }
+
+  function isTodoToolArgument(element) {
+    const row = element.parentElement
+    return element.matches?.('.act-arg') &&
+      !element.hasAttribute('data-freebuff-zh-ignore') &&
+      row?.matches?.('.tool-row-head, .run-stretch-toggle') &&
+      !shouldIgnoreContent(row) &&
+      Array.from(row.childNodes).some(child => child.matches?.('.act-name') &&
+        ['To-dos', 'TodoWrite', '待办事项'].includes(child.textContent.trim()))
+  }
+
+  function translateTodoProgress(value) {
+    return value.replace(/^(\s*)(\d+\/\d+) done(\s*)$/, '$1已完成 $2 项$3')
+  }
 
   const settingsFragments = new Map([["I accept that my plan benefits end immediately, with no refund","我接受套餐权益立即终止且不予退款"],["This involves processing biometric data (a template of your facial geometry).","这涉及处理生物识别数据（面部几何特征模板）。"],["If the same identity is used, or an attempt is made to use it, to verify any other Freebuff account, that is a violation of these terms:","如使用同一身份或试图使用该身份验证其他 Freebuff 账户，即违反这些条款："],["The lock stays in place if you delete this account.","即使删除此账户，身份锁定仍然有效。"],["The reason and how to appeal are on","原因及申诉方式请参阅"],["You’re signed in as","当前登录账户："],["Daily hours by location","按地区划分的每日时长"],["Uses the saved key at","使用保存在"],["About the","关于"],["Terminal exited","终端已退出"],["Resize terminal split","调整终端分栏"],["List price;","标价；"],["No sessions charged in the last","最近"],["Mobile number from","手机号码来自"],["You can keep your plan with","保留套餐并享受"],["Request again after","可在此时间后再次申请："],["Subscribe to","订阅"],["Keep plan with","以此价格保留套餐："],["The number you verified isn't from","你验证的号码并非来自"],["The ID verified on this account wasn't issued in","此账户验证所用证件并非由"],["You can try again after","你可以在"],["Can't get a code? An ID issued in","收不到验证码？在"],["Plans include fewer daily hours in","在以下地区，套餐每日时长较少："],["This address change is not confirmed. Refresh to check the address; do not make another change until it is resolved. If it persists, contact support with operation","此地址更改尚未确认。请刷新以检查地址；确认此问题解决前，请勿再次更改。如果问题仍然存在，请联系支持团队并提供操作编号"],["Freebuff address updated to","Freebuff 地址已更新为"],["Last checked","上次检查时间："],["Only the","仅"],["Remove comment on line","移除第 "],["Links to","指向 "],["Earn up to","最高可获得 "],["Close terminal","关闭终端 "],["Another model on","在 "],["Manage in","在 "],["API spending is","API 消费状态："],["Move to","移动到"],["a day","每天"],["wallet bonus each month, not rolled over","每月钱包奖励，未用部分不结转"],["Upgrade to","升级至"],["Get up to","最高可获得"],["hours a day with Pro","小时每日额度（Pro）"]])
   settingsFragments.set('Free', '免费')
@@ -5341,6 +5452,34 @@
   function translateUiLabel(value, element) {
     const key = value.trim()
     let translated
+    if (element.matches?.('.workspace-mode-toggle-option')) {
+      if (key === 'Code') return value.replace(key, '代码')
+      if (key === 'Chat') return value.replace(key, '聊天')
+    }
+    if (element.matches?.('.run-stretch-label')) {
+      const labels = key.toLowerCase().split(', ')
+      if (labels.every(label => Object.hasOwn(runSummaries, label))) {
+        return value.replace(key, labels.map(label => runSummaries[label]).join('，'))
+      }
+      return key === 'Thought' ? value.replace(key, '思考') : value
+    }
+    if (element.matches?.('.workspace-custom-mcp-host')) {
+      const prefix = 'This computer · '
+      const target = element.getAttribute('title')
+      const suffix = ` · ${target}`
+      if (target && key.startsWith(prefix) && key.endsWith(suffix)) {
+        const status = key.slice(prefix.length, -suffix.length)
+        const tools = /^(\d+) tools?(?:, (\d+|none) reach chats)?$/.exec(status)
+        let details = translateValue(status)
+        if (tools) {
+          const [, total, reachable] = tools
+          details = `${total} 个工具${reachable ? `，聊天可用 ${reachable === 'none' ? '0' : reachable} 个` : ''}`
+        }
+        return value.replace(key, () => `此电脑 · ${details}${suffix}`)
+      }
+      const remote = /^(.*) · (\d+) tools?$/.exec(key)
+      return remote ? value.replace(key, () => `${remote[1]} · ${remote[2]} 个工具`) : value
+    }
     if (element.closest?.('.workspace-plan-price, .workspace-plan-price-note')) {
       const units = { month: '月', year: '年', 'first month': '首月', '/ month': '/月', '/ year': '/年', Then: '之后' }
       if (Object.hasOwn(units, key)) return value.replace(key, units[key])
@@ -5392,8 +5531,16 @@
       element.hasAttribute('contenteditable') && element.getAttribute('contenteditable') !== 'false' &&
       !element.hasAttribute('data-freebuff-zh-ignore') &&
       !shouldIgnoreContent(element.parentElement)
-    if (!isUiTextarea && !isUiComposer && shouldIgnoreContent(element)) return
+    if (!isUiTextarea && !isUiComposer && shouldIgnoreContent(element)) {
+      if (isTodoToolArgument(element) && element.hasAttribute('title')) {
+        const before = element.getAttribute('title')
+        const after = translateTodoProgress(before)
+        if (after !== before) element.setAttribute('title', after)
+      }
+      return
+    }
     for (const name of translatedAttributes) {
+      if (name === 'title' && element.matches?.('.workspace-custom-mcp-host')) continue
       if (isUiTextarea && name === 'aria-valuetext') continue
       if (isUiComposer && !['aria-label', 'aria-placeholder', 'data-placeholder'].includes(name)) continue
       if (!element.hasAttribute(name)) continue
