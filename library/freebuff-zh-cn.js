@@ -6,7 +6,7 @@
   'use strict'
 
   const PATCH_ID = 'freebuff-zh-cn'
-  const PATCH_VERSION = '0.10.7'
+  const PATCH_VERSION = '0.10.8'
   if (globalThis.__FREEBUFF_ZH_PATCH__?.id === PATCH_ID) return
 
   const exact = new Map(
@@ -1148,6 +1148,45 @@
       "plan": "方案",
       "Describe the issue so we can review it.": "描述遇到的问题，以便我们进行审核。",
       "Ad": "广告",
+      "Use a six-digit hex color, such as #759e58.": "请使用六位十六进制颜色值，例如 #759e58。",
+      "Help": "帮助",
+      "Copy email address": "复制邮箱地址",
+      "Don’t see your app?": "找不到需要的应用？",
+      "Search 1,000+ more": "搜索另外 1,000 多款应用",
+      "All integrations": "所有集成",
+      "Hours and plan": "用量与套餐",
+      "Shared Cloud chats can’t be forked yet.": "共享的云端聊天暂时无法创建分支。",
+      "Open Freebuff Desktop to fork this shared chat to your computer.": "请打开 Freebuff 桌面版，将此共享聊天分支到你的电脑。",
+      "Open Freebuff Desktop to fork this shared chat.": "请打开 Freebuff 桌面版，为此共享聊天创建分支。",
+      "Update Freebuff Desktop to fork shared chats.": "请更新 Freebuff 桌面版，以便为共享聊天创建分支。",
+      "Enter your teammate’s email address.": "请输入队友的邮箱地址。",
+      "Couldn’t share. Try again.": "分享失败。请重试。",
+      "Couldn’t remove access. Try again.": "移除访问权限失败。请重试。",
+      "Share project": "分享项目",
+      "Share chat": "分享聊天",
+      "Your teammate gets every chat in this project, and the ones you start later.": "队友可以访问此项目中的所有聊天，包括之后新建的聊天。",
+      "Your teammate gets this chat, in this project.": "队友可以访问此项目中的这段聊天。",
+      "Teammate’s Freebuff email": "队友的 Freebuff 邮箱",
+      "Sharing…": "正在分享…",
+      "People with access": "有访问权限的人",
+      "Some chats": "部分聊天",
+      "Via project": "通过项目获得权限",
+      "This image link has expired. The saved copy is in the project.": "此图片链接已过期，保存的副本在项目中。",
+      "Generated image": "生成的图片",
+      "This chat is shared with you. Send with Claude Code or Codex, or fork it to use another model.": "有人与你分享了这段聊天。你可以通过 Claude Code 或 Codex 继续发送消息，也可以创建聊天分支来使用其他模型。",
+      "What the assistant is doing": "助手正在执行的操作",
+      "Attach screenshots, or a text or CSV file of post links.": "请附上截图，或包含帖子链接的文本或 CSV 文件。",
+      "Attach screenshots as PNG, JPEG, WebP or GIF.": "请附上 PNG、JPEG、WebP 或 GIF 格式的截图。",
+      "Drop screenshots, or a file of post links": "将截图或帖子链接文件拖到此处",
+      "Drop screenshots to attach": "将截图拖到此处以添加",
+      "Attach a screenshot or a file of links": "添加截图或链接文件",
+      "Stop the answer": "停止回答",
+      "Send and restart the answer": "发送并重新生成回答",
+      "Send: the answer restarts with this": "发送这条消息并重新生成回答",
+      "Failed to create worktree, disk is full.": "磁盘空间不足，无法创建工作树。",
+      "Loading the latest Freebuff.": "正在加载最新版 Freebuff。",
+      "Reload the page to try again.": "请重新加载页面后再试。",
+      "Reload now": "立即重新加载",
       "Use a six-digit hex color, such as #82966f.": "请使用六位十六进制颜色值，例如 #82966f。",
       "Import wallpaper bytes into the local image library before saving this theme.": "保存此主题前，请先将壁纸数据导入本地图片库。",
       "This theme is invalid.": "此主题无效。",
@@ -4472,6 +4511,12 @@
     [/^((?:(?:Gold|White|Blue|Plasma|Rainbow) )?Streak Fire) theme unlocked$/, (_match, theme) => `已解锁“${translateValue(theme)}”主题`],
     [/^Use ((?:(?:Gold|White|Blue|Plasma|Rainbow) )?Streak Fire)$/, (_match, theme) => `使用“${translateValue(theme)}”主题`],
     [/^(\d+) of (\d+) days, days (\d+) to (\d+)$/, '已完成 $1/$2 天，第 $3 至 $4 天'],
+    [/^Copy support email address, (\S+@\S+\.\S+)$/, '复制客服邮箱地址：$1'],
+    [/^Already shared with (\S+@\S+\.\S+)$/, '已和 $1 分享过'],
+    [/^Shared with (\S+@\S+\.\S+)$/, '已分享给 $1'],
+    [/^Shared by (\S+@\S+\.\S+)$/, '由 $1 分享'],
+    [/^Remove (\S+@\S+\.\S+)$/, '移除 $1 的访问权限'],
+    [/^Removed (\S+@\S+\.\S+)$/, '已移除 $1 的访问权限'],
     [/^Day (\d+): done$/, '第 $1 天：已完成'],
     [/^Day (\d+): today$/, '第 $1 天：今天'],
     [/^(Collapse|Expand) thinking details(?:: (.+))?$/, (_match, action, preview) => `${action === 'Expand' ? '展开' : '收起'}思考详情${preview ? `：${preview}` : ''}`],
@@ -5452,6 +5497,14 @@
   function translateUiLabel(value, element) {
     const key = value.trim()
     let translated
+    if (element.closest?.('.workspace-typing-indicator')) {
+      if (element.tagName === 'SPAN' && element.parentElement?.matches?.('.workspace-typing-indicator__text')) {
+        if (key === 'and') return ' 和 '
+        if (key === 'is typing' || key === 'are typing') return ' 正在输入'
+        if (key === 'others are typing') return ' 位其他成员正在输入'
+      }
+      return value
+    }
     if (element.matches?.('.workspace-mode-toggle-option')) {
       if (key === 'Code') return value.replace(key, '代码')
       if (key === 'Chat') return value.replace(key, '聊天')
@@ -5545,12 +5598,21 @@
       if (isUiComposer && !['aria-label', 'aria-placeholder', 'data-placeholder'].includes(name)) continue
       if (!element.hasAttribute(name)) continue
       const before = element.getAttribute(name)
-      const after = translateValue(before)
+      const after = name === 'aria-label' && element.matches?.('.workspace-typing-indicator')
+        ? translateTypingLabel(before, element)
+        : translateValue(before)
       if (after !== before) {
         element.setAttribute(name, after)
         stats.attributes += 1
       }
     }
+  }
+
+  function translateTypingLabel(value, element) {
+    const [first, second] = Array.from(element.querySelectorAll('strong'), name => name.textContent)
+    if (second && value === `${first} and ${second} are typing...`) return `${first} 和 ${second} 正在输入…`
+    return value.replace(/ and (\d+) others are typing\.\.\.$/, ' 和 $1 位其他成员正在输入…')
+      .replace(/ is typing\.\.\.$/, ' 正在输入…')
   }
 
   function contextCandidates(scope, selector) {

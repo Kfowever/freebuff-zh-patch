@@ -11,6 +11,24 @@
                   },
     "libraries":  [
                       {
+                          "fileName":  "Freebuff-Zh-Library-0.10.8.zip",
+                          "url":  "https://github.com/Kfowever/freebuff-zh-patch/releases/download/updates-v0.11.10/Freebuff-Zh-Library-0.10.8.zip",
+                          "sha256":  "e7b3767cbf7ff73ffa0d185046d7b77664ec1d3ea53175a4324457e0d5482660",
+                          "size":  157289,
+                          "version":  "0.10.8",
+                          "manifestSha256":  "514653a405eb6ce75bdfd6530b50516bbe1c8321d3a1adcc647ae85010f9ee44",
+                          "minInstallerVersion":  "0.11.0",
+                          "appVersions":  [
+                                              "0.0.196.0",
+                                              "0.0.198.0",
+                                              "0.0.200.0",
+                                              "0.0.201.0",
+                                              "0.0.202.0",
+                                              "0.0.203.0",
+                                              "0.0.204.0"
+                                          ]
+                      },
+                      {
                           "fileName":  "Freebuff-Zh-Library-0.10.7.zip",
                           "url":  "https://github.com/Kfowever/freebuff-zh-patch/releases/download/updates-v0.11.9/Freebuff-Zh-Library-0.10.7.zip",
                           "sha256":  "66c42ddf740a6e97c582c21f2cbe44282480c7d684e87d266b32159631843e71",

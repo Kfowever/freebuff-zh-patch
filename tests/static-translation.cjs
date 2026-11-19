@@ -19,6 +19,14 @@ vm.runInThisContext(fs.readFileSync(patchPath, 'utf8'), { filename: patchPath })
 const translate = global.__FREEBUFF_ZH_PATCH__.translate
 
 const cases = [
+  ['Share chat', '分享聊天'],
+  ['Shared Cloud chats can’t be forked yet.', '共享的云端聊天暂时无法创建分支。'],
+  ['Already shared with teammate+work@example.com', '已和 teammate+work@example.com 分享过'],
+  ['Remove teammate+work@example.com', '移除 teammate+work@example.com 的访问权限'],
+  ['Copy support email address, support@example.com', '复制客服邮箱地址：support@example.com'],
+  ['Use a six-digit hex color, such as #759e58.', '请使用六位十六进制颜色值，例如 #759e58。'],
+  ['Send and restart the answer', '发送并重新生成回答'],
+  ['Failed to create worktree, disk is full.', '磁盘空间不足，无法创建工作树。'],
   ['Start a streak', '开始连续使用'],
   ['Thought', '思考'],
   ['Send a message today to start one.', '今天发送一条消息，开始连续使用。'],

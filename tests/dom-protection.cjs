@@ -527,4 +527,20 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   equal(todo.textContent, '已完成 3/7 项', 'dynamic todo tool progress')
   equal(activity.textContent, '读取了文件，使用了工具', 'dynamic combined tool activity')
 }
+{
+  const root = element('main')
+  const indicator = element('div', root, { class: 'workspace-typing-indicator', 'aria-label': 'Help and Ada and Jo are typing...' })
+  const label = element('span', indicator, { class: 'workspace-typing-indicator__text' })
+  const children = [['strong', 'Help'], ['span', ' and '], ['strong', 'Ada and Jo'], ['span', ' are typing']]
+  for (const [tag, value] of children) {
+    const child = element(tag, label)
+    child.textContent = value
+    label.childNodes.push(child)
+  }
+  indicator.childNodes.push(label)
+  root.childNodes.push(indicator)
+  boot(root)
+  equal(label.textContent, 'Help 和 Ada and Jo 正在输入', 'typing text preserves both names')
+  equal(indicator.getAttribute('aria-label'), 'Help 和 Ada and Jo 正在输入…', 'accessible typing label preserves both names')
+}
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)
