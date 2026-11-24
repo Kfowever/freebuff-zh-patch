@@ -28,10 +28,10 @@ function Zip-Directory([string]$Directory, [string]$Archive) {
 }
 $catalog = Read-ZhJson (Join-Path $PackageDir 'compatibility.json')
 Test-ZhCatalog $catalog
-Assert ((Select-ZhLibrary $catalog '0.0.196.0').version -eq '0.10.8') 'exact compatible library selected'
+Assert ((Select-ZhLibrary $catalog '0.0.196.0').version -eq '0.10.9') 'exact compatible library selected'
 Assert (@(Select-ZhLibrary $catalog '0.0.197.0').Count -eq 0) 'nearby app version is not treated as compatible'
-$two=Clone $catalog; $next=Clone $two.libraries[0];$next.version='0.10.9';$two.libraries=@($two.libraries)+@($next)
-Assert ((Select-ZhLibrary $two '0.0.196.0').version -eq '0.10.9') 'newest library wins within exact compatible versions'
+$two=Clone $catalog; $next=Clone $two.libraries[0];$next.version='0.10.10';$two.libraries=@($two.libraries)+@($next)
+Assert ((Select-ZhLibrary $two '0.0.196.0').version -eq '0.10.10') 'newest library wins within exact compatible versions'
 $duplicate=Clone $catalog;$duplicate.libraries=@($duplicate.libraries)+@($duplicate.libraries[0]);Reject {Test-ZhCatalog $duplicate} 'duplicate versions rejected'
 foreach($url in @('http://github.com/Kfowever/freebuff-zh-patch/releases/download/v1/a.zip','https://github.com/Other/repo/releases/download/v1/a.zip','https://github.com.evil.test/Kfowever/freebuff-zh-patch/releases/download/v1/a.zip','https://user@github.com/Kfowever/freebuff-zh-patch/releases/download/v1/a.zip')) {
     $bad=Clone $catalog.installer;$bad.url=$url;Reject {Assert-ZhAsset $bad} "untrusted asset rejected: $url"
@@ -105,12 +105,12 @@ $result=Check $app $state
 Assert ($result.state -eq 'Pending') "download while running is pending: $($result.message)"
 Assert ($result.message.Contains('再双击“检查更新.cmd”')) 'pending status explains how to apply manually'
 Assert ((Snapshot $app) -eq $before) 'pending update does not modify the app'
-Assert (Test-Path -LiteralPath (Join-Path $state 'libraries\0.10.8\library.json')) 'library downloaded and verified before pending status'
+Assert (Test-Path -LiteralPath (Join-Path $state 'libraries\0.10.9\library.json')) 'library downloaded and verified before pending status'
 & $module {$script:TestRunning=$false}
 $result=Check $app $state
 Assert ($result.state -eq 'Applied') "exit then apply: $($result.message)"
 $installed=Read-ZhJson (Join-Path $state 'manifest.json')
-Assert ($installed.InstallerVersion -eq $catalog.installer.version -and $installed.PatchVersion -eq '0.10.8') 'installer and library versions are independent'
+Assert ($installed.InstallerVersion -eq $catalog.installer.version -and $installed.PatchVersion -eq '0.10.9') 'installer and library versions are independent'
 $after=Snapshot $app;$result=Check $app $state
 Assert ($result.state -eq 'Current') "idempotent current status: $($result.message)"
 Assert ((Snapshot $app) -eq $after) 'current check leaves installed files unchanged'
@@ -119,7 +119,7 @@ foreach ($entry in $olderCatalog.libraries) { $entry.appVersions = @('0.0.197.0'
 Write-ZhJson $olderCatalog (Join-Path $state 'catalog.json')
 Write-ZhJson $catalog (Join-Path $state 'catalog.bundled.json')
 $result = Invoke-ZhCheck $source $app $state -Offline
-Assert ($result.state -eq 'Current' -and $result.libraryVersion -eq '0.10.8') 'bundled compatible library wins when older catalog has no match'
+Assert ($result.state -eq 'Current' -and $result.libraryVersion -eq '0.10.9') 'bundled compatible library wins when older catalog has no match'
 Write-ZhJson $catalog (Join-Path $state 'catalog.json')
 $held=[IO.File]::Open((Join-Path $state 'assistant-update.lock'),[IO.FileMode]::OpenOrCreate,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None)
 try{$result=Check $app $state;Assert ($result.state -eq 'Busy') 'concurrent check is rejected'}finally{$held.Dispose()}
@@ -161,18 +161,18 @@ $asset=Clone $catalog.libraries[0];$asset.manifestSha256='0'*64
 Reject {Get-ZhPackage $asset $state 'library' $PackageDir} 'catalog content pin rejects a same-version cache mismatch'
 
 # A higher local compatible library must never be downgraded by an older catalog.
-$newLibrary=Join-Path $state 'libraries\0.10.9'
-Copy-Item -LiteralPath (Join-Path $state 'libraries\0.10.8') -Destination $newLibrary -Recurse
-$newMetadata=Read-ZhJson (Join-Path $newLibrary 'library.json');$newMetadata.version='0.10.9'
+$newLibrary=Join-Path $state 'libraries\0.10.10'
+Copy-Item -LiteralPath (Join-Path $state 'libraries\0.10.9') -Destination $newLibrary -Recurse
+$newMetadata=Read-ZhJson (Join-Path $newLibrary 'library.json');$newMetadata.version='0.10.10'
 $runtime=Join-Path $newLibrary 'freebuff-zh-cn.js'
-[IO.File]::WriteAllText($runtime,[IO.File]::ReadAllText($runtime).Replace("PATCH_VERSION = '0.10.8'","PATCH_VERSION = '0.10.9'"),$utf8)
+[IO.File]::WriteAllText($runtime,[IO.File]::ReadAllText($runtime).Replace("PATCH_VERSION = '0.10.9'","PATCH_VERSION = '0.10.10'"),$utf8)
 $newMetadata.files.'freebuff-zh-cn.js'=Get-ZhHash $runtime;Write-ZhJson $newMetadata (Join-Path $newLibrary 'library.json')
 Copy-Item -LiteralPath $runtime -Destination (Join-Path $app 'resources\orchestrator\ui\assets\freebuff-zh-cn.js') -Force
-$index=Join-Path $app 'resources\orchestrator\ui\index.html';[IO.File]::WriteAllText($index,[IO.File]::ReadAllText($index).Replace('0.10.8','0.10.9'),$utf8)
-$installed.PatchVersion='0.10.9';$installed.PatchedAssetHash=Get-ZhHash $runtime;$installed.PatchedIndexHash=Get-ZhHash $index
+$index=Join-Path $app 'resources\orchestrator\ui\index.html';[IO.File]::WriteAllText($index,[IO.File]::ReadAllText($index).Replace('0.10.9','0.10.10'),$utf8)
+$installed.PatchVersion='0.10.10';$installed.PatchedAssetHash=Get-ZhHash $runtime;$installed.PatchedIndexHash=Get-ZhHash $index
 Write-ZhJson $installed (Join-Path $state 'manifest.json')
 $newSnapshot=Snapshot $app;$result=Check $app $state
-Assert ($result.state -eq 'Current' -and $result.libraryVersion -eq '0.10.9') 'older catalog does not downgrade a newer local library'
+Assert ($result.state -eq 'Current' -and $result.libraryVersion -eq '0.10.10') 'older catalog does not downgrade a newer local library'
 Assert ((Snapshot $app) -eq $newSnapshot) 'no downgrade file writes'
 
 # Exercise real main-script self-update handoff with a harmless staged child.

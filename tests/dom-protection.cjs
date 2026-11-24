@@ -543,4 +543,32 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   equal(label.textContent, 'Help 和 Ada and Jo 正在输入', 'typing text preserves both names')
   equal(indicator.getAttribute('aria-label'), 'Help 和 Ada and Jo 正在输入…', 'accessible typing label preserves both names')
 }
+{
+  const root = element('main')
+  const commandRow = element('div', root, { class: 'workspace-install-command' })
+  const installCode = element('code', commandRow)
+  installCode.textContent = 'npm install -g freebuff'
+  const copy = element('button', commandRow, { 'aria-label': 'Copy install command' })
+  copy.textContent = 'Copy'
+  commandRow.childNodes.push(installCode, copy)
+  const next = element('p', root, { class: 'workspace-install-next' })
+  const runCode = element('code', next)
+  runCode.textContent = 'freebuff'
+  next.childNodes.push({ nodeType: 3, parentElement: next, nodeValue: 'Then run ' }, runCode,
+    { nodeType: 3, parentElement: next, nodeValue: ' in your project' })
+  const qr = element('p', root)
+  qr.childNodes.push({ nodeType: 3, parentElement: qr, nodeValue: 'Point your phone’s camera at the code.' },
+    { nodeType: 3, parentElement: qr, nodeValue: ' It opens the right store.' })
+  const unrelated = element('button', root)
+  unrelated.textContent = 'Copy'
+  root.childNodes.push(commandRow, next, qr, unrelated)
+  boot(root)
+  equal(installCode.textContent, 'npm install -g freebuff', 'install command preserved')
+  equal(copy.textContent, '复制', 'copy control in CLI download card')
+  equal(copy.getAttribute('aria-label'), '复制安装命令', 'copy control accessible name')
+  equal(next.textContent, '然后在项目目录中运行 freebuff', 'split CLI instruction follows Chinese word order')
+  equal(runCode.textContent, 'freebuff', 'run command preserved')
+  equal(qr.textContent, '用手机摄像头扫描二维码。 扫码后会打开对应的应用商店。', 'both QR instruction nodes translate')
+  equal(unrelated.textContent, 'Copy', 'unrelated copy label is outside the download-card rule')
+}
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)

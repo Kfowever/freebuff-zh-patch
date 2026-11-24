@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "0.10.8",
+  "version": "0.10.9",
   "minInstallerVersion": "0.11.0",
   "appVersions": [
     "0.0.196.0",
@@ -9,16 +9,18 @@
     "0.0.201.0",
     "0.0.202.0",
     "0.0.203.0",
-    "0.0.204.0"
+    "0.0.204.0",
+    "0.0.205.0"
   ],
   "files": {
-    "freebuff-zh-cn.js": "2e3cbda3066f9c2a54b56335df6b17ca937cc50097c31bd0317fcd923a87d0f1",
+    "freebuff-zh-cn.js": "c42d272458b3d5a2e1ab77e3c217bb3356d8878b2cc8611d5f1a1af73e41a24b",
     "profiles/0.0.196.0.json": "2716c4473a112dc61fa55f50aa030719ccdc212d7aa31031e65699a47083ecb0",
     "profiles/0.0.198.0.json": "86d3ced7f2318849d6861b4bd8454ae56470675f9cc7cbbac50278058acbd639",
     "profiles/0.0.200.0.json": "c5f8479e4055f9e4c33d584ff962b0c6a42ed48aa72226a14f71dfa4cb04c249",
     "profiles/0.0.201.0.json": "c17e36fe8c0e3c8358eadf8f371dd3aceba8e440b0e91525d638a3763830785f",
     "profiles/0.0.202.0.json": "9a41c74ad1b9d075307ff9a92cfb63cd9906ba7b3153d60635b70a2a088ada28",
     "profiles/0.0.203.0.json": "78b283e211768cf304062886747b45dc5f87843b305b140738c3cdd10f3808a6",
-    "profiles/0.0.204.0.json": "8b5f5a7a5a55b5e60bbaf7b4dddceb37f3cc767ac8fd7c921b1765b4c7a07a67"
+    "profiles/0.0.204.0.json": "8b5f5a7a5a55b5e60bbaf7b4dddceb37f3cc767ac8fd7c921b1765b4c7a07a67",
+    "profiles/0.0.205.0.json": "41bb49fd078273acfc3e3c9cc7eb33fcb7eb2b9cb80b731720a3c86ba1f2ff2f"
   }
 }
