@@ -571,4 +571,53 @@ for (const protection of ['none', 'outer-bubble', 'explicit', 'editable', 'wrong
   equal(qr.textContent, '用手机摄像头扫描二维码。 扫码后会打开对应的应用商店。', 'both QR instruction nodes translate')
   equal(unrelated.textContent, 'Copy', 'unrelated copy label is outside the download-card rule')
 }
+{
+  const root = element('main')
+  for (const origin of ['', 'https://freebuff.com']) {
+    const agreement = element('p', root)
+    const terms = element('a', agreement, { href: `${origin}/terms-of-service` })
+    const privacy = element('a', agreement, { href: `${origin}/privacy-policy` })
+    terms.textContent = 'Terms'
+    privacy.textContent = 'Privacy Policy'
+    agreement.childNodes.push({ nodeType: 3, parentElement: agreement, nodeValue: 'By continuing, you agree to the ' },
+      terms, { nodeType: 3, parentElement: agreement, nodeValue: ' and ' }, privacy)
+    root.childNodes.push(agreement)
+  }
+  const unrelated = element('p', root)
+  unrelated.textContent = ' and '
+  root.childNodes.push(unrelated)
+  boot(root)
+  for (const agreement of root.childNodes.slice(0, 2)) {
+    equal(agreement.textContent, '继续即表示你同意 条款 及 隐私政策', 'split agreement text translates')
+    equal(agreement.childNodes[3].getAttribute('href').endsWith('/privacy-policy'), true, 'policy link destination preserved')
+  }
+  equal(unrelated.textContent, ' 和 ', 'and outside the agreement uses the ordinary translation')
+}
+{
+  const root = element('main')
+  const checkout = element('button', root)
+  checkout.childNodes.push({ nodeType: 3, parentElement: checkout, nodeValue: 'Buy ' },
+    { nodeType: 3, parentElement: checkout, nodeValue: 'US$25' })
+  const stats = element('div', root, { class: 'workspace-activity-stats' })
+  const savings = element('span', stats)
+  savings.textContent = 'Saved'
+  stats.childNodes.push(savings)
+  const draftState = element('span', root)
+  draftState.textContent = 'Saved'
+  root.childNodes.push(checkout, stats, draftState)
+  boot(root)
+  equal(checkout.textContent, '购买 US$25', 'split buy button retains the displayed amount')
+  equal(savings.textContent, '节省金额', 'Saved is a monetary statistic in the activity card')
+  equal(draftState.textContent, '已保存', 'Saved remains a persistence status elsewhere')
+}
+{
+  const toolbar = element('div', null, { class: 'fb-gallery-tools' })
+  const search = element('input', toolbar, { placeholder: 'Search', 'aria-label': 'Search artifacts' })
+  toolbar.childNodes.push(search)
+  boot(toolbar)
+  equal(search.getAttribute('placeholder'), '搜索', 'artifact search placeholder is localized')
+}
+for (const selector of ['fb-doc-heading-text', 'fb-slide-el-text', 'fb-design-layer-name', 'fb-sheet-cell-text']) {
+  runScenario(`artifact user content (${selector})`, element('div', null, { class: selector }))
+}
 console.log(`PASS: ${assertions} DOM protection assertions (DOM doubles)`)
